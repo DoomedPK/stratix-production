@@ -81,3 +81,37 @@ body.login .btn-warning:hover {
 .brand-link {
     border-bottom: 1px solid rgba(255,255,255,0.1) !important;
 }
+
+
+/* Fix Jazzmin Select2 & DataTables Dropdowns in Dark Mode */
+select.form-select, 
+select.form-control,
+.dataTables_length select {
+    background-color: #212529 !important; 
+    color: #ffffff !important; 
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+select option, .dataTables_length select option {
+    background-color: #212529 !important;
+    color: #ffffff !important;
+}
+
+/* Select2 Specific Fixes */
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple,
+.select2-dropdown {
+    background-color: #212529 !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-results__option {
+    color: #ffffff !important;
+    background-color: #212529 !important;
+}
+
+.select2-results__option--highlighted[aria-selected] {
+    background-color: #ffc107 !important;
+    color: #000000 !important;
+}

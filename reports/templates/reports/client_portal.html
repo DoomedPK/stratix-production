@@ -3,29 +3,30 @@
 
 {% block content %}
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-end mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
         <div>
-            <h2 class="fw-bold text-white"><i class="fas fa-chart-pie text-primary me-2"></i> Executive Intelligence Portal</h2>
+            <h2 class="fw-bold text-white"><i class="fas fa-layer-group text-primary me-2"></i> Report Intelligence Hub</h2>
             <p class="text-muted mb-0">AI-driven predictive analytics and completed site assessments.</p>
         </div>
         
-        <form method="GET" action="{% url 'client_portal' %}" class="d-flex">
-            <select name="project" class="form-select bg-dark text-light border-secondary me-2" onchange="this.form.submit()">
+        <form method="GET" action="{% url 'client_portal' %}" class="d-flex flex-grow-1" style="max-width: 500px;">
+            <select name="project" class="form-select bg-dark text-light border-secondary me-2 w-auto" onchange="this.form.submit()">
                 <option value="">All Projects</option>
                 {% for p in projects %}
                     <option value="{{ p.id }}" {% if current_project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
                 {% endfor %}
             </select>
+            <input type="text" id="siteSearch" class="form-control bg-dark text-light border-secondary" placeholder="🔍 Search Site ID or Name..." onkeyup="filterReports()">
         </form>
     </div>
 
     {% if reports %}
-        <div class="row g-4">
+        <div class="row g-4" id="reportContainer">
         {% for report in reports %}
-            <div class="col-12">
+            <div class="col-12 report-card-wrapper">
                 <div class="card bg-dark border-secondary shadow-lg">
                     <div class="card-header border-secondary d-flex justify-content-between align-items-center bg-secondary bg-opacity-10 py-3">
-                        <h4 class="mb-0 text-info fw-bold">
+                        <h4 class="mb-0 text-info fw-bold searchable-title">
                             <i class="fas fa-broadcast-tower me-2"></i> {{ report.site.site_id }} 
                             <span class="text-light ms-2 fs-5">| {{ report.site.site_name }}</span>
                         </h4>
@@ -63,7 +64,6 @@
                             </div>
 
                             <div class="col-md-9">
-                                
                                 {% if report.drone_3d_model_link %}
                                 <div class="mb-4">
                                     <h5 class="text-light fw-bold mb-3"><i class="fas fa-cube text-success me-2"></i> Interactive 3D Scan</h5>
@@ -99,7 +99,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                
                             </div>
                         </div>
                     </div>
@@ -115,4 +114,20 @@
         </div>
     {% endif %}
 </div>
+
+<script>
+function filterReports() {
+    let input = document.getElementById('siteSearch').value.toLowerCase();
+    let cards = document.querySelectorAll('.report-card-wrapper');
+    
+    cards.forEach(card => {
+        let titleText = card.querySelector('.searchable-title').innerText.toLowerCase();
+        if (titleText.includes(input)) {
+            card.style.display = "";
+        } else {
+            card.style.display = "none";
+        }
+    });
+}
+</script>
 {% endblock %}
