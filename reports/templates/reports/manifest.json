@@ -1,0 +1,21 @@
+{
+    "name": "Stratix Dashboard",
+    "short_name": "Stratix",
+    "description": "Real-Time Cell Tower Tracking App",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#1e2937",
+    "icons": [
+        {
+            "src": "/static/images/stratix-logo.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/static/images/stratix-logo.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

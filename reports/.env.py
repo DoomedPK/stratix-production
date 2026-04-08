@@ -1,0 +1,6 @@
+DJANGO_DEBUG=True
+
+GEMINI_API_KEY=AIzaSyALiD8VF7XAnO9BMOxPkv3UphankhNAy2k
+
+EMAIL_HOST_USER=clientrelations@stratixjm.com
+EMAIL_HOST_PASSWORD=eliv wfle bydz dlcd

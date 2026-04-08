@@ -1,0 +1,402 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Cell Tower Tracking | Stratix</title>
+    
+    <link rel="manifest" href="{% url 'manifest' %}">
+    <meta name="theme-color" content="#0f172a">
+    
+    <link rel="apple-touch-icon" href="{% static 'images/stratix-logo.png' %}">
+    <link rel="icon" type="image/png" href="{% static 'images/stratix-logo.png' %}">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
+
+    <style>
+        /* APPLE SYSTEM FONT & SMOOTH FADE-IN */
+        body { 
+            background-color: #0f172a; 
+            color: #f1f5f9; 
+            padding-top: 80px; 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol" !important;
+            animation: fadeIn 0.4s ease-out forwards;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* MAC OS CUSTOM SCROLLBARS */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2); 
+            border-radius: 10px; 
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4); 
+        }
+
+        /* iOS FROSTED GLASS NAVBAR */
+        .navbar { 
+            background-color: rgba(15, 23, 42, 0.75) !important; 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08); 
+        }
+
+        /* FLUID CARD LIFT EFFECTS (Apple Depth) */
+        .card { 
+            background-color: #1e2937; 
+            border: 1px solid #334155; 
+            color: #f1f5f9; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.35);
+        }
+        
+        .text-muted { color: #94a3b8 !important; }
+        
+        /* 🚀 iOS FROSTED GLASS SIDE MENU - DESKTOP FIX */
+        .offcanvas { 
+            background-color: rgba(15, 23, 42, 0.85) !important; 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.08); 
+            position: fixed !important; /* 🚀 Forces the menu to never scroll up on desktop */
+            top: 0;
+            bottom: 0;
+            height: 100dvh !important; 
+        }
+
+        /* 🚀 Ensures the bottom padding respects mobile devices */
+        .offcanvas-body {
+            padding-bottom: max(1.5rem, env(safe-area-inset-bottom)) !important;
+        }
+        
+        .stratix-text { color: #ffffff !important; font-weight: 900; letter-spacing: -1px; }
+        .hamburger-btn { font-size: 1.5rem; color: #fff; border: none; background: transparent; padding: 0.5rem; transition: 0.2s;}
+        .hamburger-btn:hover { color: #38bdf8; transform: scale(1.1); }
+        
+        .nav-link { border-radius: 10px; margin-bottom: 5px; transition: all 0.2s ease; font-weight: 500; }
+        .nav-link:hover { background-color: rgba(255,255,255,0.05); color: #38bdf8 !important; padding-left: 25px !important;}
+        
+        /* Buttons - Tactile click scaling */
+        .btn { transition: all 0.2s ease; border-radius: 8px; font-weight: 600; }
+        .btn:active { transform: scale(0.96); }
+        
+        .search-bar { background-color: rgba(255,255,255,0.05); border: 1px solid #334155; color: white; border-radius: 10px;}
+        .search-bar:focus { background-color: rgba(255,255,255,0.1); color: white; border-color: #38bdf8; box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1); }
+        
+        #siteMap, #miniMap { border-radius: 12px; border: 1px solid #334155; z-index: 1;}
+
+        .dataTables_wrapper .dataTables_length select, .dataTables_wrapper .dataTables_filter input {
+            background-color: rgba(255,255,255,0.05); color: white; border: 1px solid #334155; border-radius: 8px; padding: 6px 12px;
+            transition: all 0.2s;
+        }
+        .dataTables_wrapper .dataTables_length select:focus, .dataTables_wrapper .dataTables_filter input:focus {
+            border-color: #38bdf8;
+            outline: none;
+        }
+        
+        .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate { color: #94a3b8 !important; margin-top: 15px;}
+        .page-link { background-color: #1e2937; border-color: #334155; color: #38bdf8; font-weight: 600; border-radius: 6px; margin: 0 2px; transition: all 0.2s;}
+        .page-link:hover { background-color: #38bdf8; color: #0f172a; border-color: #38bdf8; }
+        .page-item.active .page-link { background-color: #3b82f6; border-color: #3b82f6; color: white; }
+        .page-item.disabled .page-link { background-color: transparent; color: #64748b; border-color: #334155; }
+        
+        /* Aggressive Google Translate Fix */
+        body { top: 0px !important; position: relative !important; min-height: 100vh !important; }
+        .goog-te-banner-frame, .goog-te-banner-frame.skiptranslate, #goog-gt-tt, .goog-te-balloon-frame { display: none !important; visibility: hidden !important; }
+        .goog-text-highlight { background-color: transparent !important; box-shadow: none !important; }
+        
+        .custom-translate-dropdown {
+            background-color: rgba(255,255,255,0.05);
+            color: #f1f5f9;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .custom-translate-dropdown:focus, .custom-translate-dropdown:hover { border-color: #38bdf8; background-color: rgba(255,255,255,0.1); }
+        
+        /* Responsive tweaks for mobile navbar */
+        @media (max-width: 768px) {
+            .navbar .container-fluid { padding-left: 5px !important; padding-right: 5px !important; }
+            .stratix-text { font-size: 1.1rem !important; letter-spacing: 0px; }
+            .navbar-brand img { height: 26px !important; }
+            .hamburger-btn { padding: 0.2rem; font-size: 1.2rem; margin-right: 0.2rem !important; }
+            
+            /* Translate, Bell & Profile scaling */
+            .custom-translate-dropdown { padding: 2px 4px; font-size: 0.7rem; width: auto; margin-right: 4px; } 
+            .greeting-box { display: block !important; text-align: right; line-height: 1; margin-right: 0.2rem !important; }
+            .greeting-text { font-size: 0.70rem !important; margin-bottom: 2px; }
+            .role-text { font-size: 0.55rem !important; }
+            .avatar-circle { width: 28px !important; height: 28px !important; }
+            .avatar-circle i { font-size: 0.7rem !important; }
+            .dropdown-menu-end { position: absolute !important; right: 0; left: auto; }
+            
+            /* Hide the text globe icon and small arrow to save space */
+            .hide-on-micro { display: none !important; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <audio id="alertSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1060; margin-top: 60px;"></div>
+
+    <nav class="navbar fixed-top">
+        <div class="container-fluid px-2 px-md-4">
+            
+            <div class="d-flex align-items-center">
+                <button class="hamburger-btn me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#sideMenu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <a class="navbar-brand d-flex align-items-center gap-1" href="{% url 'dashboard_home' %}">
+                    <img src="{% static 'images/stratix-logo.png' %}" alt="Stratix Logo" height="40" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                    <span class="fw-bold fs-4 stratix-text">STRATIX</span>
+                </a>
+            </div>
+            
+            <div class="d-flex flex-grow-1 justify-content-end align-items-center">
+                
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-globe text-muted me-1 hide-on-micro" style="font-size: 1.1rem;"></i>
+                    <select id="custom-language-selector" class="custom-translate-dropdown" title="Translate">
+                        <option value="en">EN</option>
+                        <option value="es">ES</option>
+                        <option value="fr">FR</option>
+                    </select>
+                    <div id="google_translate_element" style="display:none;"></div>
+                </div>
+
+                <div class="dropdown mx-2">
+                    <button class="btn btn-dark position-relative border-0 bg-transparent p-0 mt-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="bellIconBtn">
+                        <i class="fas fa-bell fs-5 text-warning"></i>
+                        {% if recent_alerts %}
+                        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" id="bellDot"></span>
+                        {% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow-lg" style="width: 320px; border: 1px solid #334155; border-radius: 12px; background-color: rgba(30,41,55,0.95); backdrop-filter: blur(10px);">
+                        <li><h6 class="dropdown-header border-bottom border-secondary pb-2 fw-bold"><i class="fas fa-bolt me-2 text-warning"></i>Live Alerts Feed</h6></li>
+                        {% for alert in recent_alerts %}
+                        <li>
+                            <a class="dropdown-item py-2 border-bottom border-secondary border-opacity-25" href="#">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <span class="badge {% if alert.alert_type == 'REWORK' %}alert-badge-rework{% elif alert.alert_type == 'UPLOAD' %}alert-badge-upload{% else %}alert-badge-checkin{% endif %} text-uppercase" style="font-size: 0.65rem;">{{ alert.alert_type }}</span>
+                                    <span class="text-muted" style="font-size: 0.7rem;">{{ alert.timestamp|timesince }} ago</span>
+                                </div>
+                                <div class="small fw-bold text-light mb-1">{{ alert.site.site_id }}</div>
+                                <div class="text-wrap text-muted small" style="line-height: 1.2;">{{ alert.message }}</div>
+                            </a>
+                        </li>
+                        {% empty %}
+                        <li><span class="dropdown-item text-muted py-3 text-center small">All caught up! No recent alerts.</span></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="dropdown border-start border-secondary ps-2 d-flex align-items-center">
+                    <button class="btn btn-transparent p-0 border-0 d-flex align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="outline:none; box-shadow:none;">
+                        <div class="greeting-box me-3 lh-1">
+                            <div class="text-light fw-bold greeting-text" style="font-size: 0.95rem;"><span id="dynamic-greeting">Hello</span>, {{ user.first_name|default:user.username|title }}</div>
+                            <div class="text-warning text-uppercase role-text mt-1" style="font-size: 0.70rem; font-weight: 800; letter-spacing: 0.5px;">{{ user.profile.get_role_display }}</div>
+                        </div>
+                        <div class="avatar-circle bg-secondary bg-opacity-25 rounded-circle d-flex justify-content-center align-items-center" style="width: 42px; height: 42px; border: 1px solid #334155;">
+                            <i class="fas fa-user fs-5 text-light"></i>
+                        </div>
+                        <i class="fas fa-chevron-down ms-2 text-muted hide-on-micro" style="font-size: 0.75rem;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow-lg mt-3" style="width: 240px; border: 1px solid #334155; border-radius: 12px; background-color: rgba(30,41,55,0.95); backdrop-filter: blur(16px);">
+                        <li><div class="dropdown-item-text pb-3 border-bottom border-secondary border-opacity-25">
+                            <div class="fw-bold text-white fs-6">{{ user.first_name|default:user.username|title }} {{ user.last_name }}</div>
+                            <div class="text-warning small fw-bold">{{ user.profile.get_role_display }}</div>
+                        </div></li>
+                        <li><a class="dropdown-item py-2 mt-2 text-white" href="{% url 'dashboard_home' %}"><i class="fas fa-chart-line me-2 text-info"></i> Dashboard</a></li>
+                        <li><a class="dropdown-item py-2 text-white" href="{% url 'support_page' %}"><i class="fas fa-headset me-2 text-warning"></i> Stratix Support</a></li>
+                        <li><hr class="dropdown-divider border-secondary border-opacity-50"></li>
+                        <li><a class="dropdown-item py-2 text-danger fw-bold" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt me-2"></i> Secure Logout</a></li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </nav>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="sideMenu">
+        <div class="offcanvas-header border-bottom border-secondary pb-3 mt-2 flex-column align-items-start">
+            <div class="d-flex align-items-center justify-content-between w-100">
+                <div class="d-flex align-items-center gap-2 px-2">
+                    <img src="{% static 'images/stratix-logo.png' %}" alt="Stratix Logo" height="40">
+                    <span class="fw-bold fs-4 stratix-text d-inline">STRATIX</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+            </div>
+            <div class="px-2 mt-3 text-info fw-semibold fs-6">
+                <i class="fas fa-user-circle me-2"></i>{{ user.username|title }} <span class="text-muted fw-normal">({{ user.profile.get_role_display }})</span>
+            </div>
+        </div>
+        
+        <div class="offcanvas-body d-flex flex-column p-4">
+            <div class="flex-grow-1" style="overflow-y: auto; overflow-x: hidden; padding-right: 10px;">
+                <ul class="nav flex-column mb-auto fs-6 fw-semibold">
+                    <li class="nav-item"><a class="nav-link text-warning py-2 px-3 bg-secondary bg-opacity-25" href="{% url 'dashboard_home' %}"><i class="fas fa-chart-line me-3"></i> Dashboard</a></li>
+                    
+                    {% if user.profile.role == 'Client' %}
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'site_visit_list' %}"><i class="fas fa-satellite-dish me-3 text-info"></i> Live Report Tracker</a></li>
+                    {% else %}
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'site_visit_list' %}"><i class="fas fa-list me-3 text-info"></i> Site Visit List</a></li>
+                    {% endif %}
+
+                    {% if user.is_superuser or user.profile.role == 'Admin' %}
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'import_sites' %}"><i class="fas fa-file-excel me-3 text-success"></i> Bulk Import Sites</a></li>
+                    {% endif %}
+
+                    {% if user.is_superuser or user.profile.role == 'Admin' or user.profile.role == 'Client' %}
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'client_portal' %}"><i class="fas fa-file-pdf me-3 text-danger"></i> Report Download Hub</a></li>
+                    {% endif %}
+
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'site_issues' %}"><i class="fas fa-exclamation-triangle me-3 text-danger"></i> Site Issues</a></li>
+                    
+                    {% if user.is_superuser or user.profile.role == 'Contractor' or user.profile.role == 'Admin' or user.profile.role == 'Client' %}
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'rework_log' %}"><i class="fas fa-tools me-3 text-warning"></i> Rework Log</a></li>
+                    {% endif %}
+
+                    {% if user.is_superuser or user.profile.role == 'Admin' or user.profile.role == 'QA' %}
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'qa_hub' %}"><i class="fas fa-clipboard-check me-3 text-success"></i> QA Validation Hub</a></li>
+                    {% endif %}
+
+                    {% if user.is_superuser or user.profile.role == 'Admin' or user.profile.role == 'Tech Writer' or user.profile.role == 'QA' %}
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'tech_writer_hub' %}"><i class="fas fa-file-signature me-3 text-primary"></i> Tech Writer Hub</a></li>
+                    {% endif %}
+
+                    <li class="nav-item"><a class="nav-link text-white py-2 px-3" href="{% url 'global_map' %}"><i class="fas fa-globe me-3 text-success"></i> Global Map</a></li>
+
+                    <li class="nav-item border-top border-secondary pt-2 mt-2">
+                        <a class="nav-link text-white py-2 px-3" href="{% url 'support_page' %}"><i class="fas fa-headset me-3 text-warning"></i> Stratix Support</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="mt-4 pt-3 border-top border-secondary flex-shrink-0">
+                {% if user.is_superuser or user.profile.role == 'Admin' %}
+                <a class="btn btn-outline-danger w-100 py-2 fw-semibold mb-2" href="{% url 'admin:index' %}"><i class="fas fa-user-shield me-2"></i> Admin Panel</a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-danger w-100 py-2 fw-semibold rounded-3"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
+    
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+          new google.translate.TranslateElement({
+              pageLanguage: 'en', 
+              includedLanguages: 'en,es,fr', 
+              layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL,
+              autoDisplay: false
+          }, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <script>
+        $(document).ready(function() {
+            function updateGreeting() {
+                var hour = new Date().getHours();
+                var greetingText = "Hello";
+                if (hour >= 5 && hour < 12) {
+                    greetingText = "Good morning";
+                } else if (hour >= 12 && hour < 17) {
+                    greetingText = "Good afternoon";
+                } else {
+                    greetingText = "Good evening";
+                }
+                $('#dynamic-greeting').text(greetingText);
+            }
+            updateGreeting(); 
+
+            $('.btn, .nav-link').on('click', function() {
+                if (navigator.vibrate) { navigator.vibrate(40); }
+            });
+
+            function checkBodyPosition() {
+                if ($('body').css('top') !== '0px') {
+                    $('body').css('top', '0px');
+                }
+            }
+            setInterval(checkBodyPosition, 500);
+
+            $('#custom-language-selector').on('change', function() {
+                var targetLang = $(this).val();
+                var googleSelect = document.querySelector('select.goog-te-combo');
+                if (googleSelect) {
+                    googleSelect.value = targetLang;
+                    googleSelect.dispatchEvent(new Event('change'));
+                }
+                $('body').css('top', '0px');
+            });
+        });
+    </script>
+
+    <script>
+        $(document).ready(function() {
+            if ($('table.table').length > 0) {
+                $('table.table').DataTable({
+                    "pageLength": 10,
+                    "order": [], 
+                    "language": { "search": "", "searchPlaceholder": "Filter records..." },
+                    "dom": "<'row mb-3'<'col-md-6'l><'col-md-6 d-flex justify-content-end'f>>" +
+                           "<'row'<'col-sm-12'tr>>" +
+                           "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
+                });
+            }
+            Fancybox.bind('[data-fancybox="gallery"]', {});
+        });
+    </script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register("{% url 'sw' %}");
+            });
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

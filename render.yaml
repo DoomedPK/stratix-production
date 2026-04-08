@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: stratix-dashboard
+    runtime: python
+    # Using 'bash' explicitly avoids the 127 permission error
+    buildCommand: bash build.sh
+    # Daphne is required for your real-time WebSockets to work
+    startCommand: daphne core.asgi:application --port $PORT --bind 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.14.0"
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: "stratix-dashboard.onrender.com,127.0.0.1"
+      # These use 'sync: false' so Render keeps the values you typed into the dashboard
+      - key: DATABASE_URL
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        sync: false

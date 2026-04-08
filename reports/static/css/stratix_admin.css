@@ -1,0 +1,83 @@
+/* 🚀 OVERRIDE THE JAZZMIN LOGIN PAGE */
+body.login {
+    /* Pulls your uploaded yellow/black abstract background */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url("../images/abstract-bg.jpg") !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 🚀 Glassmorphism Login Card */
+body.login .login-box, body.login .register-box {
+    width: 420px;
+    margin-top: -50px;
+}
+
+body.login .card {
+    background: rgba(0, 0, 0, 0.45) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.login .card-body {
+    padding: 40px !important;
+    color: white !important;
+}
+
+body.login .login-logo a {
+    color: #ffc107 !important;
+    font-weight: 900 !important;
+    letter-spacing: -1px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+body.login .login-box-msg {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-weight: 600;
+}
+
+/* Glass Inputs */
+body.login .form-control {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+}
+
+body.login .form-control:focus {
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.3) !important;
+}
+
+/* Yellow Action Buttons */
+body.login .btn-warning {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #000 !important;
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    border-radius: 8px !important;
+    transition: all 0.2s;
+}
+
+body.login .btn-warning:hover {
+    background-color: #e0a800 !important;
+    transform: translateY(-2px);
+}
+
+/* Tweak the internal dashboard tables to look cleaner */
+.table {
+    border-radius: 8px;
+    overflow: hidden;
+}
+.brand-link {
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+}

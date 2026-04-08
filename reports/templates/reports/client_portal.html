@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="fw-bold text-white"><i class="fas fa-chart-pie text-primary me-2"></i> Executive Intelligence Portal</h2>
+            <p class="text-muted mb-0">AI-driven predictive analytics and completed site assessments.</p>
+        </div>
+        
+        <form method="GET" action="{% url 'client_portal' %}" class="d-flex">
+            <select name="project" class="form-select bg-dark text-light border-secondary me-2" onchange="this.form.submit()">
+                <option value="">All Projects</option>
+                {% for p in projects %}
+                    <option value="{{ p.id }}" {% if current_project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if reports %}
+        <div class="row g-4">
+        {% for report in reports %}
+            <div class="col-12">
+                <div class="card bg-dark border-secondary shadow-lg">
+                    <div class="card-header border-secondary d-flex justify-content-between align-items-center bg-secondary bg-opacity-10 py-3">
+                        <h4 class="mb-0 text-info fw-bold">
+                            <i class="fas fa-broadcast-tower me-2"></i> {{ report.site.site_id }} 
+                            <span class="text-light ms-2 fs-5">| {{ report.site.site_name }}</span>
+                        </h4>
+                        <div>
+                            {% if report.urgency_flag == 'High' %}
+                                <span class="badge bg-danger fs-6 px-3 py-2"><i class="fas fa-exclamation-triangle"></i> Action Required</span>
+                            {% elif report.urgency_flag == 'Medium' %}
+                                <span class="badge bg-warning text-dark fs-6 px-3 py-2">Routine Maintenance</span>
+                            {% else %}
+                                <span class="badge bg-success fs-6 px-3 py-2"><i class="fas fa-check"></i> Cleared</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <div class="row g-5">
+                            <div class="col-md-3 border-end border-secondary">
+                                <p class="text-muted small text-uppercase fw-bold tracking-wider mb-2">Delivery Date</p>
+                                <p class="text-light mb-4">{{ report.submitted_at|date:"F d, Y" }}</p>
+                                
+                                <p class="text-muted small text-uppercase fw-bold tracking-wider mb-2">Overall Risk Index</p>
+                                <h1 class="display-4 fw-bold {% if report.structural_risk_score >= 8 %}text-danger{% elif report.structural_risk_score >= 5 %}text-warning{% else %}text-success{% endif %}">
+                                    {{ report.structural_risk_score|default:"N/A" }}<span class="fs-4 text-muted">/10</span>
+                                </h1>
+                                
+                                <div class="mt-4 pt-4 border-top border-secondary">
+                                    {% if report.final_document %}
+                                        <a href="{{ report.final_document.url }}" target="_blank" class="btn btn-outline-primary w-100 fw-bold">
+                                            <i class="fas fa-file-pdf me-2"></i> Download Full Report
+                                        </a>
+                                    {% else %}
+                                        <button class="btn btn-outline-secondary w-100 fw-bold" disabled>Report Unavailable</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="col-md-9">
+                                
+                                {% if report.drone_3d_model_link %}
+                                <div class="mb-4">
+                                    <h5 class="text-light fw-bold mb-3"><i class="fas fa-cube text-success me-2"></i> Interactive 3D Scan</h5>
+                                    <div class="border border-secondary rounded overflow-hidden shadow-sm" style="height: 400px; background-color: #000;">
+                                        <iframe src="{{ report.drone_3d_model_link }}" width="100%" height="100%" frameborder="0" allow="autoplay; fullscreen; vr" style="pointer-events: auto;"></iframe>
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <div class="mb-4">
+                                    <h5 class="text-light fw-bold mb-3"><i class="fas fa-align-left text-primary me-2"></i> Executive Summary</h5>
+                                    <div class="bg-secondary bg-opacity-25 p-3 rounded border border-secondary">
+                                        <p class="text-light mb-0" style="white-space: pre-wrap;">{{ report.client_executive_summary|default:"No executive summary provided." }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <h6 class="text-light fw-bold mb-2"><i class="fas fa-history text-info me-2"></i> Historical Trend Analysis</h6>
+                                        <div class="p-3 rounded border border-secondary h-100" style="background: rgba(13, 202, 240, 0.05);">
+                                            <p class="text-light small mb-0" style="white-space: pre-wrap;">{{ report.historical_trend_analysis|default:"No historical data available for trend comparison." }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <h6 class="text-light fw-bold mb-2"><i class="fas fa-crystal-ball text-warning me-2"></i> Predictive Risk Outlook</h6>
+                                        <div class="p-3 rounded border border-secondary h-100" style="background: rgba(255, 193, 7, 0.05);">
+                                            {% if report.predictive_risk_outlook %}
+                                                <p class="text-light small mb-0" style="white-space: pre-wrap;">{{ report.predictive_risk_outlook }}</p>
+                                            {% else %}
+                                                <p class="text-muted small mb-0 fst-italic">Predictive models require more environmental baseline data to generate an outlook for this site.</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <div class="card p-5 text-center shadow-sm bg-dark border-secondary mt-4">
+            <i class="fas fa-folder-open mb-3 fs-1 text-primary opacity-50"></i>
+            <h4 class="text-light mt-2">No Completed Reports Yet</h4>
+            <p class="mb-0 text-muted">Your operational intelligence will appear here once sites pass QA validation and final engineer review.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

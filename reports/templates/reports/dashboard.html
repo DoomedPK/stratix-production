@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .metric-card { transition: transform 0.2s; border-left: 4px solid #334155; }
+    .metric-card:hover { transform: translateY(-3px); }
+    .border-primary-left { border-left-color: #3b82f6 !important; }
+    .border-warning-left { border-left-color: #f59e0b !important; }
+    .border-success-left { border-left-color: #10b981 !important; }
+    .border-info-left { border-left-color: #0ea5e9 !important; }
+    .border-purple-left { border-left-color: #8b5cf6 !important; }
+    .border-danger-left { border-left-color: #ef4444 !important; }
+    
+    .pulse-dot {
+        height: 12px; width: 12px; background-color: #10b981; border-radius: 50%; display: inline-block; margin-right: 8px;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4 align-items-md-center">
+        <div class="col-xl-7 col-lg-6 mb-3 mb-lg-0">
+            <h2 class="fw-bold text-white fs-3"><i class="fas fa-satellite-dish me-2 text-primary"></i> Real-Time Cell Tower Tracking</h2>
+            <p class="text-muted mb-0">Overview of all active and completed deployments.</p>
+        </div>
+        
+        <div class="col-xl-5 col-lg-6 d-flex flex-wrap justify-content-lg-end align-items-center gap-3">
+            <form method="GET" class="d-flex align-items-center mb-0">
+                <label class="text-light me-2 fw-semibold small text-uppercase text-nowrap">Project Filter:</label>
+                <select name="project" class="form-select form-select-sm bg-dark text-light border-secondary shadow-none" onchange="this.form.submit()" style="width: auto; min-width: 150px;">
+                    <option value="">-- All Projects --</option>
+                    {% for p in available_projects %}
+                        <option value="{{ p.id }}" {% if current_project and current_project.id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <div class="badge bg-dark border border-success px-3 py-2 fs-6">
+                <span class="pulse-dot"></span> Live System Active
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        {% if user.profile.role == 'Contractor' %}
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-primary-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Total Sites Received</p>
+                <h3 class="fw-bold mb-0 text-white">{{ total_sites_received }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-purple-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Visits Completed</p>
+                <h3 class="fw-bold mb-0 text-white">{{ visits_completed }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-warning-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Visits Remaining</p>
+                <h3 class="fw-bold mb-0 text-white">{{ visits_remaining }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-danger-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Pending Photos Validation</p>
+                <h3 class="fw-bold mb-0 text-white">{{ pending_photos_validation }}</h3>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-primary-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">{% if user.profile.role == 'Client' %}Total Sites{% else %}Total Sites Received{% endif %}</p>
+                <h3 class="fw-bold mb-0 text-white">{{ total_sites_received }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-warning-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">{% if user.profile.role == 'Client' %}Total Reports Remaining{% else %}Reports Needs Completion{% endif %}</p>
+                <h3 class="fw-bold mb-0 text-white">{{ total_reports_needs_completion }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-info-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Visits In Progress</p>
+                <h3 class="fw-bold mb-0 text-white">{{ visits_in_progress_count }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-success-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Total Reports Completed</p>
+                <h3 class="fw-bold mb-0 text-white">{{ total_reports_completed }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-purple-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Visits Completed</p>
+                <h3 class="fw-bold mb-0 text-white">{{ visits_completed }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-primary-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Reports In Progress</p>
+                <h3 class="fw-bold mb-0 text-white">{{ reports_in_progress }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-danger-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Pending Photos Validation</p>
+                <h3 class="fw-bold mb-0 text-white">{{ pending_photos_validation }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card metric-card border-warning-left p-3 h-100 shadow-sm">
+                <p class="text-muted mb-1 small text-uppercase fw-bold">Pending Report Validation</p>
+                <h3 class="fw-bold mb-0 text-white">{{ pending_report_validation }}</h3>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card p-4 shadow-sm mb-4">
+                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-3 mb-4">
+                    <h5 class="fw-bold mb-0"><i class="fas fa-chart-pie me-2 text-info"></i> Project Progression</h5>
+                    <span class="badge bg-secondary text-light">{{ current_project.name|default:"All Projects" }}</span>
+                </div>
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="progressionChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card p-4 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-3 mb-4">
+                    <h5 class="fw-bold mb-0"><i class="fas fa-map-marked-alt me-2 text-success"></i> Global Deployment Map</h5>
+                    <a href="{% url 'global_map' %}" class="btn btn-sm btn-outline-info">Full Screen</a>
+                </div>
+                <div id="miniMap" style="height: 300px; width: 100%; border-radius: 8px; z-index: 1;"></div>
+                
+                <div class="mt-3 d-flex flex-wrap gap-2 justify-content-center small text-muted">
+                    <span class="badge bg-dark border border-secondary fw-normal"><i class="fas fa-circle text-success me-1"></i> Completed (Good)</span>
+                    <span class="badge bg-dark border border-secondary fw-normal"><i class="fas fa-circle text-primary me-1"></i> In Progress</span>
+                    <span class="badge bg-dark border border-secondary fw-normal"><i class="fas fa-circle text-warning me-1"></i> Minor Issue</span>
+                    <span class="badge bg-dark border border-secondary fw-normal"><i class="fas fa-circle me-1" style="color: #f97316;"></i> Major Issue</span>
+                    <span class="badge bg-dark border border-secondary fw-normal"><i class="fas fa-circle text-danger me-1"></i> Critical Issue</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card p-4 shadow-sm mb-4">
+                <h5 class="fw-bold mb-4 border-bottom border-secondary pb-3"><i class="fas fa-tasks me-2 text-warning"></i> Report Status Board</h5>
+                <div class="row g-3">
+                    {% for item in status_board %}
+                        {% if user.profile.role == 'Contractor' %}
+                            {% if item.stage == 'Pending QA Validation' %}
+                                <div class="col-md-12">
+                                    <div class="card bg-dark bg-opacity-50 border-{{ item.color }} h-100 p-3 text-center transition">
+                                        <i class="fas {{ item.icon }} fs-2 text-{{ item.color }} mb-2 mt-2"></i>
+                                        <h3 class="fw-bold text-white mb-0">{{ item.count }}</h3>
+                                        <p class="text-{{ item.color }} fw-semibold small mb-2">{{ item.stage }}</p>
+                                        <p class="text-muted small mb-0" style="font-size: 0.75rem;">{{ item.example }}</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% elif user.profile.role == 'Client' %}
+                            {% if item.stage != 'Completed & Delivered' %}
+                                <div class="col-md-6">
+                                    <div class="card bg-dark bg-opacity-50 border-{{ item.color }} h-100 p-3 text-center transition">
+                                        <i class="fas {{ item.icon }} fs-2 text-{{ item.color }} mb-2 mt-2"></i>
+                                        <h3 class="fw-bold text-white mb-0">{{ item.count }}</h3>
+                                        <p class="text-{{ item.color }} fw-semibold small mb-2">{{ item.stage }}</p>
+                                        <p class="text-muted small mb-0" style="font-size: 0.75rem;">{{ item.example }}</p>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="col-md-4">
+                                <div class="card bg-dark bg-opacity-50 border-{{ item.color }} h-100 p-3 text-center transition">
+                                    <i class="fas {{ item.icon }} fs-2 text-{{ item.color }} mb-2 mt-2"></i>
+                                    <h3 class="fw-bold text-white mb-0">{{ item.count }}</h3>
+                                    <p class="text-{{ item.color }} fw-semibold small mb-2">{{ item.stage }}</p>
+                                    <p class="text-muted small mb-0" style="font-size: 0.75rem;">{{ item.example }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if show_performance %}
+            <div class="card p-4 shadow-sm border-info-left h-auto">
+                <div class="row align-items-center mb-4">
+                    <div class="col-md-7">
+                        <h5 class="fw-bold mb-0"><i class="fas fa-stopwatch me-2 text-info"></i> Performance & Turnaround</h5>
+                        <p class="text-muted small mb-0 mt-2 d-flex align-items-center flex-wrap gap-2">
+                            Avg time to final report delivery: 
+                            <span class="badge bg-info text-dark" style="font-size: 0.9rem;">{{ avg_tat }} Days</span>
+                        </p>
+                    </div>
+                    
+                    {% if is_client_or_admin %}
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0 d-flex justify-content-md-end align-items-center gap-3 flex-wrap">
+                        <a href="{% url 'export_performance_csv' %}?project={{ request.GET.project }}" class="btn btn-sm btn-outline-success fw-bold">
+                            <i class="fas fa-file-csv me-1"></i> Export CSV
+                        </a>
+                        <div>
+                            <label class="text-light me-2 fw-semibold small text-uppercase">Review Contractor:</label>
+                            <select id="contractorSelect" class="form-select form-select-sm bg-dark text-light border-secondary d-inline-block w-auto shadow-none" onchange="showContractorStats()">
+                                <option value="">-- Select a Contractor --</option>
+                                {% for c in contractor_stats %}
+                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div id="contractorStatsContainer" {% if is_client_or_admin %}style="display: none;"{% endif %}>
+                    {% for c in contractor_stats %}
+                    <div class="contractor-data row g-3 bg-dark bg-opacity-25 p-3 rounded border border-secondary" id="contractor-{{ c.id }}" {% if is_client_or_admin %}style="display: none;"{% endif %}>
+                        
+                        <div class="col-md-4 border-end border-secondary">
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Contractor</p>
+                            <h5 class="text-white fw-bold mb-0"><i class="fas fa-hard-hat me-2 text-warning"></i> {{ c.name }}</h5>
+                        </div>
+                        
+                        <div class="col-md-2 border-end border-secondary text-center">
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Total Submissions</p>
+                            <h4 class="text-info fw-bold mb-0">{{ c.total_submissions }}</h4>
+                        </div>
+
+                        <div class="col-md-2 border-end border-secondary text-center">
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Rework Rate</p>
+                            <h4 class="{% if c.rework_rate > 20 %}text-danger{% else %}text-success{% endif %} fw-bold mb-0">{{ c.rework_rate }}%</h4>
+                        </div>
+
+                        <div class="col-md-4">
+                            <p class="text-muted small text-uppercase fw-bold mb-1">Common Errors</p>
+                            <ul class="list-unstyled small text-light mb-0" style="font-size: 0.8rem;">
+                                {% for error in c.common_errors %}
+                                    <li class="text-truncate" title="{{ error }}"><i class="fas fa-exclamation-circle text-danger me-1"></i> {{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if is_client_or_admin %}
+            <div class="card p-4 shadow-sm border-success-left h-auto mt-4">
+                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-3 mb-4">
+                    <h5 class="fw-bold mb-0"><i class="fas fa-chart-line me-2 text-success"></i> 6-Month Trend Analysis</h5>
+                </div>
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            {% endif %}
+
+            {% endif %}
+        </div>
+    </div>
+
+    {% if predictive_reports and is_client_or_admin %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-dark border-secondary shadow-lg" style="border-left: 4px solid #64748b;">
+                <div class="card-header border-secondary border-opacity-25 bg-secondary bg-opacity-10 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-light fw-bold"><i class="fas fa-radar me-2 text-secondary"></i> AI Predictive Risk Watchlist</h5>
+                    <a href="{% url 'client_portal' %}" class="btn btn-sm btn-outline-secondary fw-bold">View Full Reports</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0 align-middle">
+                            <thead class="table-active text-muted small text-uppercase tracking-wider border-bottom border-secondary">
+                                <tr>
+                                    <th class="ps-4">Site ID</th>
+                                    <th>Current Status</th>
+                                    <th>AI Predictive Outlook</th>
+                                    <th class="pe-4 text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in predictive_reports %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-info">{{ report.site.site_id }}</td>
+                                    <td>
+                                        {% if report.urgency_flag == 'High' %}
+                                            <span class="badge bg-danger shadow-sm">Critical Warning</span>
+                                        {% elif report.urgency_flag == 'Medium' %}
+                                            <span class="badge bg-warning text-dark shadow-sm">Maintenance Needed</span>
+                                        {% else %}
+                                            <span class="badge bg-success shadow-sm">Stable</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <p class="mb-0 small text-light" style="white-space: pre-wrap;">{{ report.predictive_risk_outlook }}</p>
+                                    </td>
+                                    <td class="pe-4 text-end">
+                                        <a href="{% url 'client_portal' %}?project={{ report.site.project.id }}" class="btn btn-sm btn-outline-info fw-bold">Details</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        Chart.register(ChartDataLabels);
+        const ctx = document.getElementById('progressionChart').getContext('2d');
+        const chartLabels = [{% for status in status_data %}'{{ status.label }}',{% endfor %}];
+        const chartCounts = [{% for status in status_data %}{{ status.count }},{% endfor %}];
+        const chartColors = [{% for status in status_data %}'{{ status.color }}',{% endfor %}];
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: chartLabels, datasets: [{ data: chartCounts, backgroundColor: chartColors, borderColor: '#1e2937', borderWidth: 3, hoverOffset: 6 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { display: true, position: 'right', labels: { color: '#cbd5e1', usePointStyle: true, pointStyle: 'circle', padding: 15, font: { family: "'Segoe UI', Roboto, sans-serif", size: 11 } } },
+                    tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.95)', titleColor: '#fff', bodyColor: '#cbd5e1', borderColor: '#334155', borderWidth: 1, padding: 12, displayColors: true, usePointStyle: true },
+                    datalabels: {
+                        color: '#ffffff', font: { weight: 'bold', size: 13, family: "'Segoe UI', Roboto, sans-serif" },
+                        formatter: (value, ctx) => {
+                            if (value === 0) return '';
+                            let sum = 0;
+                            ctx.chart.data.datasets[0].data.map(data => { sum += data; });
+                            return (value * 100 / sum).toFixed(0) + "%";
+                        }
+                    }
+                }
+            }
+        });
+
+        if (document.getElementById('miniMap')) {
+            var miniMap = L.map('miniMap', { scrollWheelZoom: false }).setView([20, 0], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap contributors &copy; CARTO' }).addTo(miniMap);
+            var sites = {{ sites_json|safe }};
+            var bounds = [];
+            sites.forEach(function(site) {
+                L.circleMarker([site.lat, site.lng], { radius: 6, fillColor: site.color, color: "#000", weight: 1, opacity: 1, fillOpacity: 0.9 })
+                 .addTo(miniMap)
+                 .bindPopup(`<b>${site.name}</b><br><span class="text-muted">${site.site_name}</span><br>Status: <b style="color:${site.color}">${site.status}</b>`);
+                bounds.push([site.lat, site.lng]); 
+            });
+            if (bounds.length > 0) { miniMap.fitBounds(bounds, { padding: [20, 20] }); }
+        }
+
+        if (document.getElementById('trendChart')) {
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            const labels = JSON.parse('{{ trend_labels|safe }}');
+            const tatData = JSON.parse('{{ tat_trend|safe }}');
+            const reworkData = JSON.parse('{{ rework_trend|safe }}');
+
+            new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Avg Turnaround Time (Days)', data: tatData, borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 3, tension: 0.3, fill: true, yAxisID: 'y' },
+                        { label: 'Rework Rate (%)', data: reworkData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 3, tension: 0.3, fill: true, yAxisID: 'y1' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#cbd5e1' } }, datalabels: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Days', color: '#38bdf8' }, ticks: { color: '#94a3b8' }, grid: { color: '#334155' }, min: 0 },
+                        y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Percentage (%)', color: '#ef4444' }, ticks: { color: '#94a3b8' }, grid: { drawOnChartArea: false }, min: 0, max: 100 }
+                    }
+                }
+            });
+        }
+    });
+
+    function showContractorStats() {
+        var selectedId = document.getElementById("contractorSelect").value;
+        var container = document.getElementById("contractorStatsContainer");
+        var allData = document.querySelectorAll(".contractor-data");
+        allData.forEach(function(el) { el.style.display = "none"; });
+        if (selectedId) {
+            container.style.display = "block";
+            document.getElementById("contractor-" + selectedId).style.display = "flex";
+        } else {
+            container.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}

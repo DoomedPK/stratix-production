@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-white mb-0"><i class="fas fa-pen-nib me-2 text-primary"></i> Drafting Report: {{ report.site.site_id }}</h2>
+        <a href="{% url 'tech_writer_hub' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Back to Hub</a>
+    </div>
+
+    <div class="row g-4">
+        {% if report.structural_risk_score %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card p-3 shadow-sm" style="background: rgba(30, 20, 10, 0.8); border-left: 4px solid #f59e0b;">
+                    <h5 class="fw-bold text-warning border-bottom border-warning border-opacity-25 pb-2 mb-3">
+                        <i class="fas fa-robot me-2"></i> Gemini AI Report Data (Include in Draft)
+                    </h5>
+                    <div class="row text-light">
+                        <div class="col-md-3">
+                            <p class="mb-0 text-warning small fw-bold">Risk Score:</p>
+                            <p class="fw-bold fs-5 mb-0">{{ report.structural_risk_score }}/10</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p class="mb-0 text-warning small fw-bold">Equipment Damage:</p>
+                            <p class="fw-bold fs-5 mb-0 text-info">{{ report.equipment_damage_score }}/10</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p class="mb-0 text-warning small fw-bold">Urgency:</p>
+                            <p class="fw-bold fs-5 mb-0 text-danger">{{ report.urgency_flag }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p class="mb-0 text-warning small fw-bold">Repair Timeline:</p>
+                            <p class="fw-bold fs-5 mb-0">{{ report.ai_repair_timeline }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <div class="col-lg-5">
+            <div class="card p-4 shadow-sm border-info-left h-100">
+                <h5 class="fw-bold border-bottom border-secondary pb-2 mb-4 text-info"><i class="fas fa-file-upload me-2"></i> Submit Final Draft</h5>
+                
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label for="final_document" class="form-label text-muted fw-bold">Upload PDF Draft</label>
+                        <input class="form-control bg-dark text-light border-secondary" type="file" id="final_document" name="final_document" accept=".pdf" required>
+                        <div class="form-text text-muted">Must be a compiled PDF document.</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="comments" class="form-label text-muted fw-bold">Technical Writer Notes</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" id="comments" name="comments" rows="4" placeholder="Optional notes for the QA reviewer..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="fas fa-paper-plane me-2"></i> Send to QA Validation</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card p-4 shadow-sm border-success-left h-100">
+                <h5 class="fw-bold border-bottom border-secondary pb-2 mb-4 text-success"><i class="fas fa-images me-2"></i> QA Approved Source Photos</h5>
+                
+                {% if photos %}
+                <div class="row g-3 overflow-auto" style="max-height: 600px; padding-right: 10px;">
+                    {% for photo in photos %}
+                    <div class="col-6 col-md-4">
+                        <div class="card bg-dark border-secondary h-100">
+                            <a href="{{ photo.image.url }}" data-fancybox="gallery" data-caption="<strong class='text-info'>Category:</strong> {{ photo.category }} <br><br> <strong class='text-warning'>QA Feedback:</strong> {{ photo.qa_feedback|default:'None' }} <br><br> <strong class='text-success'>Contractor Notes:</strong> {{ photo.contractor_notes|default:'None' }}">
+                                <img src="{{ photo.image.url }}" class="card-img-top border-bottom border-secondary" style="height: 130px; object-fit: cover;" alt="Site Photo">
+                            </a>
+                            <div class="card-body p-2 d-flex flex-column">
+                                <div class="text-center fw-bold text-light mb-2" style="font-size: 0.75rem;">{{ photo.category }}</div>
+                                
+                                {% if photo.qa_feedback %}
+                                <div class="bg-secondary bg-opacity-25 p-1 rounded mb-1 border border-warning border-opacity-50">
+                                    <p class="mb-0 text-warning text-wrap" style="font-size: 0.65rem; line-height: 1.2;"><i class="fas fa-search me-1"></i><strong>QA:</strong> {{ photo.qa_feedback }}</p>
+                                </div>
+                                {% endif %}
+                                
+                                {% if photo.contractor_notes %}
+                                <div class="bg-secondary bg-opacity-25 p-1 rounded mt-auto border border-info border-opacity-50">
+                                    <p class="mb-0 text-info text-wrap" style="font-size: 0.65rem; line-height: 1.2;"><i class="fas fa-hard-hat me-1"></i><strong>Con:</strong> {{ photo.contractor_notes }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center mt-5"><i class="fas fa-exclamation-circle me-1"></i> No approved photos found for this site.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

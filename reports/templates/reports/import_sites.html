@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-4">
+                <i class="fas fa-cloud-upload-alt fs-1 text-success mb-3"></i>
+                <h2 class="fw-bold text-white">Bulk Import Sites</h2>
+                <p class="text-muted">Quickly deploy multiple sites into the tracking system using a CSV file.</p>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+                    <i class="fas {% if message.tags == 'error' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="card p-4 p-md-5 shadow-lg border-success-left" style="border-left: 4px solid #10b981;">
+                
+                <div class="alert bg-dark border border-secondary text-light mb-4">
+                    <h6 class="fw-bold text-info"><i class="fas fa-info-circle me-2"></i> Required Format</h6>
+                    <p class="small mb-2">Create your data in Excel, then click <strong>File -> Save As -> CSV (Comma delimited)</strong>.</p>
+                    <p class="small mb-0 text-muted">Required column headers: <code class="text-warning">site_id</code>, <code class="text-warning">site_name</code>, <code class="text-warning">project</code>, <code class="text-warning">location</code>, <code class="text-warning">latitude</code>, <code class="text-warning">longitude</code>, <code class="text-warning">priority</code></p>
+                </div>
+
+                <form method="POST" enctype="multipart/form-data" class="text-center">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4 text-start">
+                        <label for="import_file" class="form-label text-light fw-bold">Select CSV File</label>
+                        <input class="form-control bg-dark text-light border-secondary" type="file" id="import_file" name="import_file" accept=".csv" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">
+                        <i class="fas fa-upload me-2"></i> Upload and Process
+                    </button>
+                </form>
+                
+                <hr class="border-secondary mt-4 mb-4">
+                
+                <div class="text-center">
+                    <p class="text-muted small mb-2">Need the template?</p>
+                    <pre class="bg-dark p-3 rounded text-start small border border-secondary text-light overflow-auto">site_id,site_name,project,location,latitude,longitude,priority
+STX-101,Kingston Tower,Digital Expansion 2026,"Kingston, JM",17.97,-76.79,High</pre>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
