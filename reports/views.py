@@ -102,6 +102,25 @@ def dashboard_home(request):
         reports = base_reports
         current_project = None
 
+    # 🚀 STRATIX AI: GOD MODE NATURAL LANGUAGE FILTERS
+    nl_location = request.GET.get('location')
+    nl_urgency = request.GET.get('urgency')
+    nl_contractor = request.GET.get('contractor')
+    nl_status = request.GET.get('status')
+
+    if nl_location:
+        sites = sites.filter(location__icontains=nl_location)
+        reports = reports.filter(site__in=sites)
+    if nl_contractor:
+        sites = sites.filter(assigned_contractors__username__icontains=nl_contractor)
+        reports = reports.filter(site__in=sites)
+    if nl_urgency:
+        reports = reports.filter(urgency_flag__icontains=nl_urgency)
+        sites = sites.filter(reports__in=reports)
+    if nl_status:
+        reports = reports.filter(status__icontains=nl_status)
+        sites = sites.filter(reports__in=reports)
+
     total_sites_received = sites.count()
     total_reports_completed = reports.filter(status='submitted').count()
     total_reports_needs_completion = total_sites_received - total_reports_completed
@@ -237,7 +256,6 @@ def dashboard_home(request):
             'common_errors': common_errors
         })
 
-    # 🚀 PHASE 3 ADDITION: Grab the top 5 reports that have a Predictive Risk Outlook
     predictive_reports = reports.exclude(predictive_risk_outlook__isnull=True).exclude(predictive_risk_outlook='').order_by('-submitted_at')[:5]
 
     context = {
@@ -1119,10 +1137,59 @@ INSTRUCTIONS FOR YOU:
                     {"role": "user", "content": user_message}
                 ],
                 model="llama-3.3-70b-versatile",
-                temperature=0.4, # Lowered slightly to reduce rambling and keep it focused
+                temperature=0.4, 
             )
 
             return JsonResponse({'response': chat_completion.choices[0].message.content})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+# -----------------------------------------------------------------------------
+# STRATIX AI: GOD MODE DASHBOARD FILTER (NATURAL LANGUAGE TO JSON)
+# -----------------------------------------------------------------------------
+@csrf_exempt
+@login_required
+def nl_filter_translator(request):
+    if request.method == 'POST':
+        # Security: Only Admins and QA can use the God Mode search
+        if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['Admin', 'QA'])):
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+        try:
+            data = json.loads(request.body)
+            query = data.get('query', '')
+
+            if not query:
+                return JsonResponse({'error': 'No query provided'}, status=400)
+
+            system_prompt = """You are a backend database translator. 
+Convert the user's natural language search into a strict JSON object to filter a telecom dashboard. 
+Extract the intent and return a JSON object with ONLY these exact keys (use null if the user did not mention it):
+- "location": (string, e.g., "Kingston", "St. Ann")
+- "urgency": (string, exactly "High", "Medium", or "Low")
+- "contractor": (string, name of the contractor/person)
+- "status": (string, exactly "not_visited", "visit_in_progress", "site_data_submitted", "qa_validation", "engineer_review", "submitted")
+
+Do not add any other text. Return ONLY the JSON object."""
+
+            load_dotenv()
+            client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+            
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": query}
+                ],
+                model="llama-3.3-70b-versatile",
+                temperature=0, 
+                response_format={"type": "json_object"} 
+            )
+
+            result = json.loads(chat_completion.choices[0].message.content)
+            return JsonResponse(result)
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
