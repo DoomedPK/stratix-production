@@ -87,7 +87,6 @@ class Report(models.Model):
     historical_trend_analysis = models.TextField(blank=True, null=True)
     category_damage_breakdown = models.TextField(blank=True, null=True)
     
-    # 🚀 PHASE 3: TRUE PREDICTIVE ANALYTICS
     predictive_risk_outlook = models.TextField(blank=True, null=True, help_text="AI simulation of future structural degradation based on environment.")
     drone_3d_model_link = models.URLField(max_length=500, blank=True, null=True, help_text="Public share link from DroneDeploy or Pix4D.")
 
@@ -118,7 +117,6 @@ class SitePhoto(models.Model):
     contractor = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'groups__name': 'Contractors'})
     image = models.ImageField(upload_to='site_photos/%Y/%m/%d/')
     
-    # 🚀 PHASE 3: ANNOTATED PHOTOS & DRONE FLAG
     annotated_image = models.ImageField(upload_to='annotated_photos/%Y/%m/%d/', blank=True, null=True, help_text="AI-drawn bounding boxes of damage.")
     is_drone_capture = models.BooleanField(default=False, help_text="True if uploaded via the Automated Drone API.")
 
@@ -195,6 +193,7 @@ class SupportTicket(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_tickets')
     subject = models.CharField(max_length=150)
     description = models.TextField()
+    screenshot = models.ImageField(upload_to='support_tickets/%Y/%m/%d/', blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -228,7 +227,6 @@ class DroneAPIKey(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.key:
-            # Generates a highly secure, randomized 40+ character key (e.g., stx_A8b9F...)
             self.key = f"stx_{secrets.token_urlsafe(32)}"
         super().save(*args, **kwargs)
 

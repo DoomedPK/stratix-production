@@ -18,7 +18,7 @@
             {% endif %}
 
             <div class="card p-4 p-md-5 shadow-sm border-warning-left">
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
                     
                     <div class="row g-3 mb-4">
@@ -47,6 +47,12 @@
                     <div class="mb-4">
                         <label for="description" class="form-label text-white fw-bold">Detailed Description</label>
                         <textarea class="form-control bg-dark text-light border-secondary" id="description" name="description" rows="5" placeholder="Please provide exactly what went wrong, including the Site ID if applicable..." required></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="screenshot" class="form-label text-white fw-bold">Attach Screenshot (Optional)</label>
+                        <input class="form-control bg-dark text-light border-secondary" type="file" id="screenshot" name="screenshot" accept="image/*">
+                        <div class="form-text text-muted small mt-1">Upload an image of the error to help our tech team resolve it faster.</div>
                     </div>
 
                     <button type="submit" class="btn btn-warning w-100 fw-bold text-dark py-3"><i class="fas fa-paper-plane me-2"></i> Submit Priority Ticket</button>

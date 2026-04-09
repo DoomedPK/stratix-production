@@ -902,11 +902,13 @@ def support_page(request):
     if request.method == 'POST':
         ticket_subject = request.POST.get('subject', 'General Support')
         description = request.POST.get('description', 'No description provided.')
+        screenshot = request.FILES.get('screenshot')
         
         ticket = SupportTicket.objects.create(
             user=request.user,
             subject=ticket_subject,
             description=description,
+            screenshot=screenshot,
             status='Pending'
         )
         
@@ -918,6 +920,7 @@ def support_page(request):
         )
 
         try:
+            screenshot_status = "Yes (Attached in Admin Panel)" if screenshot else "No image attached"
             email_message = f"""
 New Support Ticket #{ticket.id}
 
@@ -928,6 +931,8 @@ Subject: {ticket_subject}
 
 Description:
 {description}
+
+Screenshot Provided: {screenshot_status}
 
 ---
 Please log into the Stratix Command Center admin panel to view and resolve this ticket.

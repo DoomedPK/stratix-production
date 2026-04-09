@@ -52,10 +52,15 @@ class SiteIssueAdmin(admin.ModelAdmin):
 
 @admin.register(SupportTicket)
 class SupportTicketAdmin(admin.ModelAdmin):
-    list_display = ('subject', 'user', 'status', 'created_at')
+    list_display = ('subject', 'user', 'status', 'created_at', 'has_screenshot')
     list_editable = ('status',)
     list_filter = ('status',)
     search_fields = ('subject', 'user__username')
+
+    def has_screenshot(self, obj):
+        return bool(obj.screenshot)
+    has_screenshot.boolean = True
+    has_screenshot.short_description = 'Screenshot'
 
 # 🚀 V2.0 DYNAMIC AI PROMPT CONFIGURATION
 @admin.register(AIPromptSettings)
