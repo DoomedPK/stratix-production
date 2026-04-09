@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+    /* Smooth scrolling for chat */
+    #chatHistory {
+        scroll-behavior: smooth;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
@@ -54,12 +63,16 @@
                                 
                                 <div class="mt-4 pt-4 border-top border-secondary">
                                     {% if report.final_document %}
-                                        <a href="{{ report.final_document.url }}" target="_blank" class="btn btn-outline-primary w-100 fw-bold">
+                                        <a href="{{ report.final_document.url }}" target="_blank" class="btn btn-outline-primary w-100 fw-bold mb-2">
                                             <i class="fas fa-file-pdf me-2"></i> Download Full Report
                                         </a>
                                     {% else %}
-                                        <button class="btn btn-outline-secondary w-100 fw-bold" disabled>Report Unavailable</button>
+                                        <button class="btn btn-outline-secondary w-100 fw-bold mb-2" disabled>Report Unavailable</button>
                                     {% endif %}
+                                    
+                                    <button class="btn w-100 fw-bold text-dark" style="background: linear-gradient(135deg, #38bdf8, #818cf8);" onclick="openChatModal('{{ report.id }}', '{{ report.site.site_id }}')">
+                                        <i class="fas fa-robot me-2"></i> Chat with Stratix AI
+                                    </button>
                                 </div>
                             </div>
 
@@ -115,7 +128,40 @@
     {% endif %}
 </div>
 
+<div class="modal fade" id="chatModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content bg-dark border-secondary shadow-lg text-light" style="border-radius: 16px; height: 75vh;">
+            <div class="modal-header border-secondary pb-3" style="background: linear-gradient(to right, #1e2937, #0f172a);">
+                <div>
+                    <h5 class="modal-title fw-bold text-white mb-1"><i class="fas fa-robot text-info me-2"></i> Stratix AI Assistant</h5>
+                    <p class="mb-0 text-muted small" id="chatModalSubtitle">Analyzing Report: ...</p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-4" id="chatHistory" style="background-color: #0f172a;">
+                <div class="d-flex align-items-start mb-3">
+                    <div class="bg-primary bg-opacity-25 text-light p-3 rounded border border-primary border-opacity-50" style="max-width: 85%; border-bottom-left-radius: 0 !important;">
+                        Hello! I am Stratix AI. I have fully analyzed the structural data for this specific tower. What would you like to know about it?
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer border-secondary p-3 bg-secondary bg-opacity-10 d-flex flex-nowrap">
+                <input type="hidden" id="currentChatReportId">
+                <input type="text" id="chatInput" class="form-control bg-dark text-light border-secondary flex-grow-1" placeholder="Ask about damages, timelines, or risks..." onkeypress="handleKeyPress(event)">
+                <button class="btn fw-bold ms-2" style="background-color: #38bdf8; color: #000;" id="sendBtn" onclick="sendChatMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
+// Filter Function
 function filterReports() {
     let input = document.getElementById('siteSearch').value.toLowerCase();
     let cards = document.querySelectorAll('.report-card-wrapper');
@@ -127,6 +173,130 @@ function filterReports() {
         } else {
             card.style.display = "none";
         }
+    });
+}
+
+// Chat Functionality
+let chatModalInstance;
+
+document.addEventListener("DOMContentLoaded", function() {
+    chatModalInstance = new bootstrap.Modal(document.getElementById('chatModal'));
+    
+    // Auto-focus input when modal opens
+    document.getElementById('chatModal').addEventListener('shown.bs.modal', function () {
+        document.getElementById('chatInput').focus();
+    });
+});
+
+function openChatModal(reportId, siteId) {
+    document.getElementById('currentChatReportId').value = reportId;
+    document.getElementById('chatModalSubtitle').innerText = `Analyzing Report Data for Site: ${siteId}`;
+    
+    // Clear history except for greeting
+    const chatHistory = document.getElementById('chatHistory');
+    chatHistory.innerHTML = `
+        <div class="d-flex align-items-start mb-3">
+            <div class="bg-primary bg-opacity-25 text-light p-3 rounded border border-primary border-opacity-50" style="max-width: 85%; border-bottom-left-radius: 0 !important;">
+                Hello! I am Stratix AI. I have fully analyzed the structural data for this specific tower. What would you like to know about it?
+            </div>
+        </div>
+    `;
+    
+    chatModalInstance.show();
+}
+
+function handleKeyPress(e) {
+    if (e.key === 'Enter') {
+        sendChatMessage();
+    }
+}
+
+function appendMessage(text, isUser) {
+    const chatHistory = document.getElementById('chatHistory');
+    const msgDiv = document.createElement('div');
+    
+    // Use marked library if you want markdown, else just raw text. For now, raw text is perfectly fine.
+    
+    if (isUser) {
+        msgDiv.className = 'd-flex align-items-end flex-column mb-3';
+        msgDiv.innerHTML = `
+            <div class="bg-dark text-light p-3 rounded border border-secondary shadow-sm" style="max-width: 85%; border-bottom-right-radius: 0 !important; white-space: pre-wrap;">
+                ${text}
+            </div>
+            <span class="small text-muted mt-1 me-1">You</span>
+        `;
+    } else {
+        msgDiv.className = 'd-flex align-items-start flex-column mb-3';
+        msgDiv.innerHTML = `
+            <div class="bg-primary bg-opacity-25 text-light p-3 rounded border border-primary border-opacity-50" style="max-width: 85%; border-bottom-left-radius: 0 !important; white-space: pre-wrap;">
+                ${text}
+            </div>
+            <span class="small text-info mt-1 ms-1"><i class="fas fa-bolt me-1"></i>Stratix AI</span>
+        `;
+    }
+    
+    chatHistory.appendChild(msgDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll to bottom
+}
+
+function sendChatMessage() {
+    const inputField = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const message = inputField.value.trim();
+    const reportId = document.getElementById('currentChatReportId').value;
+    
+    if (!message) return;
+    
+    // Add user message to UI
+    appendMessage(message, true);
+    inputField.value = '';
+    
+    // Disable input while waiting
+    inputField.disabled = true;
+    sendBtn.disabled = true;
+    
+    // Add temporary loading message
+    const chatHistory = document.getElementById('chatHistory');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'loadingIndicator';
+    loadingDiv.className = 'd-flex align-items-start mb-3';
+    loadingDiv.innerHTML = `<div class="text-muted small fst-italic"><i class="fas fa-circle-notch fa-spin me-2"></i> Stratix AI is analyzing the report...</div>`;
+    chatHistory.appendChild(loadingDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    // Send to Backend
+    fetch("{% url 'report_chat' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            report_id: reportId,
+            message: message
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Remove loader
+        document.getElementById('loadingIndicator').remove();
+        
+        // Re-enable input
+        inputField.disabled = false;
+        sendBtn.disabled = false;
+        inputField.focus();
+        
+        if (data.error) {
+            appendMessage("⚠️ Connection error: " + data.error, false);
+        } else {
+            appendMessage(data.response, false);
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingIndicator').remove();
+        inputField.disabled = false;
+        sendBtn.disabled = false;
+        appendMessage("⚠️ Connection failed. Please try again.", false);
     });
 }
 </script>

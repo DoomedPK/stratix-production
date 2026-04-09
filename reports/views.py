@@ -1,4 +1,5 @@
 import json
+import os
 import csv
 import io
 import datetime
@@ -6,10 +7,9 @@ import time
 import requests
 import re
 from io import BytesIO
+from dotenv import load_dotenv
 from PIL import Image, ImageDraw, ImageFont
-
 from google import genai
-
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -18,7 +18,7 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_exempt
-
+from groq import Groq
 from .models import Site, SitePhoto, Report, ActivityAlert, Project, SiteIssue, Client, SupportTicket, AIPromptSettings, DroneAPIKey
 from django.utils.timezone import now
 from django.urls import reverse
@@ -26,6 +26,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.views.decorators.http import require_POST
 from django.core.files.base import ContentFile
+
+load_dotenv()
 
 # --- CATEGORY MINIMUMS ---
 PHOTO_MINIMUMS = {
@@ -261,7 +263,7 @@ def dashboard_home(request):
         'trend_labels': json.dumps(trend_labels),
         'tat_trend': json.dumps(tat_trend),
         'rework_trend': json.dumps(rework_trend),
-        'predictive_reports': predictive_reports, # 🚀 New variable for the template!
+        'predictive_reports': predictive_reports,
     }
     return render(request, 'reports/dashboard.html', context)
 
@@ -434,7 +436,6 @@ def finish_upload(request, site_id):
     if request.method == 'POST':
         report = site.reports.first()
         
-        # 🚀 ADD THIS NEW LINE RIGHT HERE:
         if request.POST.get('drone_3d_link'):
             report.drone_3d_model_link = request.POST.get('drone_3d_link')
             report.save()
@@ -523,10 +524,8 @@ def finish_upload(request, site_id):
                     report.historical_trend_analysis = ai_data.get('historical_trend_analysis', '')
                     report.category_damage_breakdown = ai_data.get('category_damage_breakdown', '')
                     
-                    # 🚀 PHASE 3: TRUE PREDICTIVE ANALYTICS
                     report.predictive_risk_outlook = ai_data.get('predictive_risk_outlook', '')
                     
-                    # 🚀 PHASE 3: DRAWING BOUNDING BOXES ON THE IMAGES
                     boxes_data = ai_data.get('annotated_damages', [])
                     
                     for index, (photo_obj, pil_img) in enumerate(pil_images):
@@ -538,24 +537,18 @@ def finish_upload(request, site_id):
                             draw = ImageDraw.Draw(pil_img)
                             width, height = pil_img.size
                             for box in photo_boxes:
-                                # Gemini outputs boxes in [ymin, xmin, ymax, xmax] normalized to 1000
                                 coords = box.get('box_2d', [0,0,0,0])
                                 if len(coords) == 4:
                                     ymin, xmin, ymax, xmax = coords
-                                    # Convert 0-1000 scale to actual image pixels
                                     left = (xmin / 1000) * width
                                     top = (ymin / 1000) * height
                                     right = (xmax / 1000) * width
                                     bottom = (ymax / 1000) * height
                                     
-                                    # Draw Red Rectangle
                                     draw.rectangle([left, top, right, bottom], outline="red", width=5)
-                                    
-                                    # Add Text Label
                                     label = box.get('issue', 'Damage')
                                     draw.text((left, top - 15), label, fill="red")
                             
-                            # Save the annotated image to the database field
                             buffer = BytesIO()
                             pil_img.save(buffer, format='JPEG', quality=85)
                             file_name = f"annotated_{photo_obj.id}.jpg"
@@ -579,19 +572,10 @@ def finish_upload(request, site_id):
     
     return redirect('site_visit_list')
 
-# -------------------------------------------------------------------------
-# 🚀 PHASE 3: AUTOMATED DRONE API INTEGRATION
-# -------------------------------------------------------------------------
 @csrf_exempt
 def api_drone_upload(request):
-    """
-    Allows drone fleets (Pix4D, DroneDeploy) to push data directly via REST POST.
-    Authenticates using the Contractor's unique DroneAPIKey.
-    """
     if request.method == 'POST':
         provided_key = request.POST.get('api_key')
-        
-        # 1. ENTERPRISE AUTHENTICATION CHECK
         api_record = DroneAPIKey.objects.filter(key=provided_key, is_active=True).first()
         
         if not api_record:
@@ -606,10 +590,9 @@ def api_drone_upload(request):
             
         site = get_object_or_404(Site, site_id=site_id_val)
         
-        # 2. ASSIGN THE PHOTO TO THE ACTUAL CONTRACTOR WHO OWNS THE KEY
         SitePhoto.objects.create(
             site=site, 
-            contractor=api_record.contractor,  # Automatically tagged!
+            contractor=api_record.contractor,
             image=image_file, 
             category=category, 
             status='PENDING', 
@@ -784,14 +767,22 @@ def draft_report(request, report_id):
         final_pdf = request.FILES.get('final_document')
         comments = request.POST.get('comments', '')
         
+        report.client_executive_summary = request.POST.get('client_executive_summary', report.client_executive_summary)
+        report.category_damage_breakdown = request.POST.get('category_damage_breakdown', report.category_damage_breakdown)
+        report.historical_trend_analysis = request.POST.get('historical_trend_analysis', report.historical_trend_analysis)
+        report.predictive_risk_outlook = request.POST.get('predictive_risk_outlook', report.predictive_risk_outlook)
+        report.drone_3d_model_link = request.POST.get('drone_3d_model_link', report.drone_3d_model_link)
+        
         if final_pdf:
             report.final_document = final_pdf
-            report.comments = comments
-            report.status = 'engineer_review' 
-            report.save()
-            ActivityAlert.objects.create(message="Draft Report submitted for QA final approval.", user=request.user, site=report.site, alert_type='UPLOAD')
-            messages.success(request, "Draft sent to QA!")
-            return redirect('tech_writer_hub')
+            
+        report.comments = comments
+        report.status = 'engineer_review' 
+        report.save() 
+        
+        ActivityAlert.objects.create(message="Draft Report submitted for QA final approval.", user=request.user, site=report.site, alert_type='UPLOAD')
+        messages.success(request, "Draft sent to QA!")
+        return redirect('tech_writer_hub')
 
     return render(request, 'reports/draft_report.html', {'report': report, 'photos': approved_photos})
 
@@ -993,3 +984,147 @@ def resolve_issue(request, issue_id):
     messages.success(request, f"Issue for {issue.site.site_id} has been marked as completely fixed!")
     
     return redirect('site_issues_list')
+
+# -----------------------------------------------------------------------------
+# STRATIX AI: AUTOPILOT (TECH WRITER HUB)
+# -----------------------------------------------------------------------------
+@csrf_exempt
+@login_required
+def groq_rewrite(request):
+    if request.method == 'POST':
+        if request.user.profile.role not in ['Admin', 'QA', 'Tech Writer'] and not request.user.is_superuser:
+            return JsonResponse({'error': 'Unauthorized'}, status=403)
+
+        try:
+            data = json.loads(request.body)
+            original_text = data.get('text', '')
+            style = data.get('style', 'professional')
+
+            if not original_text:
+                return JsonResponse({'error': 'No text provided'}, status=400)
+
+            system_prompts = {
+                'professional': "You are an expert Telecommunications Structural Engineer. Rewrite the following inspection text to sound highly professional, corporate, and polished. Fix any grammatical errors. DO NOT add new facts or guess data. Return ONLY the rewritten text.",
+                'concise': "You are an expert Telecommunications Executive. Rewrite the following inspection text to be extremely concise, bullet-pointed if necessary, and straight to the point. Remove fluff. DO NOT add new facts. Return ONLY the rewritten text.",
+                'urgent': "You are an Emergency Telecommunications Dispatcher. Rewrite the following inspection text to highlight severe urgency and critical risk. Use strong, assertive language indicating immediate action is required. DO NOT add new facts. Return ONLY the rewritten text."
+            }
+
+            selected_prompt = system_prompts.get(style, system_prompts['professional'])
+
+            load_dotenv()
+            client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+            
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": selected_prompt},
+                    {"role": "user", "content": f"Rewrite this text:\n\n{original_text}"}
+                ],
+                model="llama-3.3-70b-versatile",
+                temperature=0.3,
+            )
+
+            return JsonResponse({'rewritten_text': chat_completion.choices[0].message.content.strip()})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+# -----------------------------------------------------------------------------
+# STRATIX AI: CONSULTANT CHAT WITH PDF VISION (CLIENT PORTAL)
+# -----------------------------------------------------------------------------
+@csrf_exempt
+@login_required
+def report_chat(request):
+    """
+    Allows clients to ask questions about a specific report.
+    Acts as an elite telecommunications consultant, utilizing both DB data and PDF text.
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            report_id = data.get('report_id')
+            user_message = data.get('message')
+
+            if not report_id or not user_message:
+                return JsonResponse({'error': 'Missing report ID or message'}, status=400)
+
+            report = get_object_or_404(Report, id=report_id)
+
+            if hasattr(request.user, 'profile') and request.user.profile.role == 'Client':
+                if report.site.project.client != request.user.profile.client:
+                    return JsonResponse({'error': 'Unauthorized Access'}, status=403)
+
+            # --- Extract Text from the Uploaded PDF (if it exists) ---
+            pdf_text = ""
+            if report.final_document:
+                try:
+                    import PyPDF2
+                    pdf_file = report.final_document.file
+                    pdf_reader = PyPDF2.PdfReader(pdf_file)
+                    for page in pdf_reader.pages:
+                        text = page.extract_text()
+                        if text:
+                            pdf_text += text + "\n"
+                except Exception as e:
+                    pdf_text = f"[PDF Vision could not extract text automatically. Error: {str(e)}]"
+            else:
+                pdf_text = "[No PDF attached to this report yet.]"
+
+            # --- Build the Database Fact Sheet ---
+            db_context = f"""
+            Site ID: {report.site.site_id}
+            Site Name: {report.site.site_name}
+            Structural Risk Score: {report.structural_risk_score}/10
+            Urgency Flag: {report.urgency_flag}
+            Recommended Repair Timeline: {report.ai_repair_timeline}
+            
+            Executive Summary:
+            {report.client_executive_summary}
+            
+            Damage Breakdown:
+            {report.category_damage_breakdown}
+            
+            Predictive Risk Outlook:
+            {report.predictive_risk_outlook}
+            """
+
+            # --- The New "Concise Consultant Mode" Prompt ---
+            system_prompt = f"""You are 'Stratix AI', an elite telecommunications infrastructure consultant advising a client.
+Your goal is to give the client clear, actionable, and highly concise answers about their site report.
+
+Below is the raw database data for the report, followed by the raw extracted text from the final PDF document (if available).
+
+--- START OF DATABASE FACT SHEET ---
+{db_context}
+
+--- START OF PDF DOCUMENT TEXT ---
+{pdf_text}
+--- END OF DATA ---
+
+INSTRUCTIONS FOR YOU:
+1. Base all your factual answers entirely on the data provided above.
+2. DO NOT just blindly repeat the text. Act as a senior expert consultant interpreting the data.
+3. If the client asks "how to fix this" or "what teams to send", use your general knowledge to suggest specific trades (e.g., "You need a structural welding crew"), but keep the explanation BRIEF.
+4. Be empathetic and professional, but EXTREMELY CONCISE. Do not write long essays. Use bullet points if it helps with readability. Answer the exact question asked without unnecessary fluff or rambling.
+"""
+
+            # Connect to Groq
+            load_dotenv()
+            client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+            
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                model="llama-3.3-70b-versatile",
+                temperature=0.4, # Lowered slightly to reduce rambling and keep it focused
+            )
+
+            return JsonResponse({'response': chat_completion.choices[0].message.content})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)

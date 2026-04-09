@@ -4,7 +4,9 @@ from . import views
 
 urlpatterns = [
     path('', views.dashboard_home, name='dashboard_home'),
-    path('import-sites/', views.import_sites, name='import_sites'), 
+    path('import-sites/', views.import_sites, name='import_sites'),
+    path('api/groq-rewrite/', views.groq_rewrite, name='groq_rewrite'),
+    path('api/report-chat/', views.report_chat, name='report_chat'),
     path('upload/', views.upload_photos, name='upload_photos'),
     path('api/drone-upload/', views.api_drone_upload, name='api_drone_upload'),
     path('upload/finish/<int:site_id>/', views.finish_upload, name='finish_upload'),

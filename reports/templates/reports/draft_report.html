@@ -1,6 +1,36 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+    .form-control, .form-select { background-color: #0f172a; border-color: #334155; color: #fff; }
+    .form-control:focus, .form-select:focus { background-color: #1e2937; border-color: #38bdf8; color: #fff; box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25); }
+    .card-header-dark { background-color: #1e2937; border-bottom: 2px solid #334155; }
+    
+    /* Groq Autopilot Button Styles */
+    .btn-groq {
+        background: linear-gradient(135deg, #f59e0b, #f97316);
+        border: none;
+        color: white;
+        font-weight: bold;
+        transition: all 0.2s ease;
+    }
+    .btn-groq:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+        color: white;
+    }
+    .groq-loading {
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -8,84 +38,185 @@
         <a href="{% url 'tech_writer_hub' %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Back to Hub</a>
     </div>
 
+    <div class="modal fade" id="groqModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary shadow-lg text-light">
+                <div class="modal-header border-secondary border-opacity-25 bg-secondary bg-opacity-10">
+                    <h5 class="modal-title fw-bold text-warning"><i class="fas fa-bolt me-2"></i> Stratix Autopilot Rewrite</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Select a tone, and Stratix AI will rewrite the text instantly.</p>
+                    <input type="hidden" id="groqTargetField">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-light text-start py-2" onclick="triggerGroqRewrite('professional')">
+                            <i class="fas fa-user-tie text-primary me-2 w-20px"></i> <strong>Professional & Corporate</strong><br>
+                            <span class="small text-muted ms-4">Polishes grammar and uses industry-standard terminology.</span>
+                        </button>
+                        <button class="btn btn-outline-light text-start py-2" onclick="triggerGroqRewrite('concise')">
+                            <i class="fas fa-compress-alt text-success me-2 w-20px"></i> <strong>Concise & Direct</strong><br>
+                            <span class="small text-muted ms-4">Removes fluff, straight to the point.</span>
+                        </button>
+                        <button class="btn btn-outline-light text-start py-2" onclick="triggerGroqRewrite('urgent')">
+                            <i class="fas fa-exclamation-circle text-danger me-2 w-20px"></i> <strong>Critical Urgency</strong><br>
+                            <span class="small text-muted ms-4">Highlights risk and demands immediate attention.</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-4">
         {% if report.structural_risk_score %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card p-3 shadow-sm" style="background: rgba(30, 20, 10, 0.8); border-left: 4px solid #f59e0b;">
-                    <h5 class="fw-bold text-warning border-bottom border-warning border-opacity-25 pb-2 mb-3">
-                        <i class="fas fa-robot me-2"></i> Gemini AI Report Data (Include in Draft)
-                    </h5>
-                    <div class="row text-light">
-                        <div class="col-md-3">
-                            <p class="mb-0 text-warning small fw-bold">Risk Score:</p>
-                            <p class="fw-bold fs-5 mb-0">{{ report.structural_risk_score }}/10</p>
-                        </div>
-                        <div class="col-md-3">
-                            <p class="mb-0 text-warning small fw-bold">Equipment Damage:</p>
-                            <p class="fw-bold fs-5 mb-0 text-info">{{ report.equipment_damage_score }}/10</p>
-                        </div>
-                        <div class="col-md-3">
-                            <p class="mb-0 text-warning small fw-bold">Urgency:</p>
-                            <p class="fw-bold fs-5 mb-0 text-danger">{{ report.urgency_flag }}</p>
-                        </div>
-                        <div class="col-md-3">
-                            <p class="mb-0 text-warning small fw-bold">Repair Timeline:</p>
-                            <p class="fw-bold fs-5 mb-0">{{ report.ai_repair_timeline }}</p>
-                        </div>
+        <div class="col-12">
+            <div class="card p-3 shadow-sm mb-2" style="background: rgba(30, 20, 10, 0.8); border-left: 4px solid #f59e0b;">
+                <h5 class="fw-bold text-warning border-bottom border-warning border-opacity-25 pb-2 mb-3">
+                    <i class="fas fa-robot me-2"></i> Stratix AI Report Data (Raw Output)
+                </h5>
+                <div class="row text-light">
+                    <div class="col-md-3">
+                        <p class="mb-0 text-warning small fw-bold">Risk Score:</p>
+                        <p class="fw-bold fs-5 mb-0">{{ report.structural_risk_score }}/10</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-0 text-warning small fw-bold">Equipment Damage:</p>
+                        <p class="fw-bold fs-5 mb-0 text-info">{{ report.equipment_damage_score }}/10</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-0 text-warning small fw-bold">Urgency:</p>
+                        <p class="fw-bold fs-5 mb-0 text-danger">{{ report.urgency_flag }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-0 text-warning small fw-bold">Repair Timeline:</p>
+                        <p class="fw-bold fs-5 mb-0">{{ report.ai_repair_timeline }}</p>
                     </div>
                 </div>
             </div>
         </div>
         {% endif %}
-        <div class="col-lg-5">
-            <div class="card p-4 shadow-sm border-info-left h-100">
-                <h5 class="fw-bold border-bottom border-secondary pb-2 mb-4 text-info"><i class="fas fa-file-upload me-2"></i> Submit Final Draft</h5>
-                
-                <form method="POST" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div class="mb-4">
-                        <label for="final_document" class="form-label text-muted fw-bold">Upload PDF Draft</label>
-                        <input class="form-control bg-dark text-light border-secondary" type="file" id="final_document" name="final_document" accept=".pdf" required>
-                        <div class="form-text text-muted">Must be a compiled PDF document.</div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label for="comments" class="form-label text-muted fw-bold">Technical Writer Notes</label>
-                        <textarea class="form-control bg-dark text-light border-secondary" id="comments" name="comments" rows="4" placeholder="Optional notes for the QA reviewer..."></textarea>
-                    </div>
 
-                    <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="fas fa-paper-plane me-2"></i> Send to QA Validation</button>
-                </form>
+        <div class="col-lg-6">
+            <div class="card p-0 shadow-sm border-info-left h-100">
+                <div class="card-header card-header-dark py-3">
+                    <h5 class="mb-0 fw-bold text-info"><i class="fas fa-file-upload me-2"></i> Report Drafting</h5>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4 position-relative">
+                            <label class="form-label text-muted fw-bold small text-uppercase">Client Executive Summary</label>
+                            <button type="button" class="btn btn-sm btn-groq position-absolute top-0 end-0 mt-4 me-2" onclick="openGroqModal('id_client_executive_summary')">
+                                <i class="fas fa-magic me-1"></i> Rewrite
+                            </button>
+                            <textarea name="client_executive_summary" id="id_client_executive_summary" rows="5" class="form-control" required>{{ report.client_executive_summary|default:"" }}</textarea>
+                        </div>
+
+                        <div class="mb-4 position-relative">
+                            <label class="form-label text-muted fw-bold small text-uppercase">Category Damage Breakdown</label>
+                            <button type="button" class="btn btn-sm btn-groq position-absolute top-0 end-0 mt-4 me-2" onclick="openGroqModal('id_category_damage_breakdown')">
+                                <i class="fas fa-magic me-1"></i> Rewrite
+                            </button>
+                            <textarea name="category_damage_breakdown" id="id_category_damage_breakdown" rows="4" class="form-control" required>{{ report.category_damage_breakdown|default:"" }}</textarea>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 position-relative">
+                                <label class="form-label text-muted fw-bold small text-uppercase">Historical Trend Analysis</label>
+                                <button type="button" class="btn btn-sm btn-groq position-absolute top-0 end-0 mt-4 me-3" onclick="openGroqModal('id_historical_trend_analysis')">
+                                    <i class="fas fa-magic"></i>
+                                </button>
+                                <textarea name="historical_trend_analysis" id="id_historical_trend_analysis" rows="3" class="form-control">{{ report.historical_trend_analysis|default:"" }}</textarea>
+                            </div>
+                            <div class="col-md-6 position-relative mt-3 mt-md-0">
+                                <label class="form-label text-muted fw-bold small text-uppercase">Predictive Risk Outlook</label>
+                                <button type="button" class="btn btn-sm btn-groq position-absolute top-0 end-0 mt-4 me-3" onclick="openGroqModal('id_predictive_risk_outlook')">
+                                    <i class="fas fa-magic"></i>
+                                </button>
+                                <textarea name="predictive_risk_outlook" id="id_predictive_risk_outlook" rows="3" class="form-control">{{ report.predictive_risk_outlook|default:"" }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label text-muted fw-bold small text-uppercase mb-2">3D Drone Model Link (Optional)</label>
+                            <input type="url" name="drone_3d_model_link" class="form-control" placeholder="https://sketchfab.com/models/..." value="{{ report.drone_3d_model_link|default:'' }}">
+                            <div class="form-text text-muted small mt-1">Paste the embed URL from Sketchfab or DroneDeploy.</div>
+                        </div>
+
+                        <div class="mb-4 border-top border-secondary pt-3">
+                            <label for="final_document" class="form-label text-white fw-bold">Upload Final PDF Document</label>
+                            
+                            {% if report.final_document %}
+                                <div class="bg-dark p-3 rounded border border-secondary mb-3 d-flex align-items-center">
+                                    <i class="fas fa-file-pdf fs-2 text-danger me-3"></i>
+                                    <div>
+                                        <h6 class="mb-0 fw-bold text-light">Current Document</h6>
+                                        <a href="{{ report.final_document.url }}" target="_blank" class="small text-info text-decoration-none">View PDF</a>
+                                    </div>
+                                </div>
+                                <p class="small text-warning mb-2">Upload a new file below to replace it:</p>
+                            {% endif %}
+                            
+                            <input class="form-control bg-dark text-light border-secondary" type="file" id="final_document" name="final_document" accept=".pdf" {% if not report.final_document %}required{% endif %}>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="comments" class="form-label text-muted fw-bold">Technical Writer Internal Notes</label>
+                            <textarea class="form-control bg-dark text-light border-secondary" id="comments" name="comments" rows="3" placeholder="Optional notes..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-3 fs-5"><i class="fas fa-paper-plane me-2"></i> Submit Final Draft</button>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <div class="col-lg-7">
+        <div class="col-lg-6">
             <div class="card p-4 shadow-sm border-success-left h-100">
                 <h5 class="fw-bold border-bottom border-secondary pb-2 mb-4 text-success"><i class="fas fa-images me-2"></i> QA Approved Source Photos</h5>
                 
                 {% if photos %}
-                <div class="row g-3 overflow-auto" style="max-height: 600px; padding-right: 10px;">
+                <div class="row g-3 overflow-auto" style="max-height: 800px; padding-right: 10px;">
                     {% for photo in photos %}
-                    <div class="col-6 col-md-4">
-                        <div class="card bg-dark border-secondary h-100">
-                            <a href="{{ photo.image.url }}" data-fancybox="gallery" data-caption="<strong class='text-info'>Category:</strong> {{ photo.category }} <br><br> <strong class='text-warning'>QA Feedback:</strong> {{ photo.qa_feedback|default:'None' }} <br><br> <strong class='text-success'>Contractor Notes:</strong> {{ photo.contractor_notes|default:'None' }}">
-                                <img src="{{ photo.image.url }}" class="card-img-top border-bottom border-secondary" style="height: 130px; object-fit: cover;" alt="Site Photo">
-                            </a>
+                    <div class="col-12"> <div class="card bg-dark border-secondary h-100 position-relative">
+                            <div class="card-body p-0 border-bottom border-secondary">
+                                <div class="row g-0">
+                                    <div class="col-{% if photo.annotated_image %}6 border-end border-secondary{% else %}12{% endif %} position-relative">
+                                        <span class="badge bg-dark position-absolute bottom-0 start-0 m-1 opacity-75">Original</span>
+                                        <a href="{{ photo.image.url }}" data-fancybox="gallery" data-caption="{{ photo.category }}">
+                                            <img src="{{ photo.image.url }}" class="img-fluid w-100" style="object-fit: cover; height: 220px;" alt="Site Photo">
+                                        </a>
+                                    </div>
+                                    {% if photo.annotated_image %}
+                                    <div class="col-6 position-relative">
+                                        <span class="badge bg-danger position-absolute bottom-0 start-0 m-1"><i class="fas fa-crosshairs"></i> AI Detection</span>
+                                        <a href="{{ photo.annotated_image.url }}" data-fancybox="gallery" data-caption="{{ photo.category }} - AI Detection">
+                                            <img src="{{ photo.annotated_image.url }}" class="img-fluid w-100" style="object-fit: cover; height: 220px;" alt="Annotated Photo">
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
                             <div class="card-body p-2 d-flex flex-column">
-                                <div class="text-center fw-bold text-light mb-2" style="font-size: 0.75rem;">{{ photo.category }}</div>
+                                <div class="text-center fw-bold text-light mb-2" style="font-size: 0.8rem;">{{ photo.category }}</div>
                                 
                                 {% if photo.qa_feedback %}
-                                <div class="bg-secondary bg-opacity-25 p-1 rounded mb-1 border border-warning border-opacity-50">
-                                    <p class="mb-0 text-warning text-wrap" style="font-size: 0.65rem; line-height: 1.2;"><i class="fas fa-search me-1"></i><strong>QA:</strong> {{ photo.qa_feedback }}</p>
+                                <div class="bg-secondary bg-opacity-25 p-2 rounded mb-2 border border-warning border-opacity-50">
+                                    <p class="mb-0 text-warning text-wrap" style="font-size: 0.75rem; line-height: 1.3;"><i class="fas fa-search me-1"></i><strong>QA:</strong> {{ photo.qa_feedback }}</p>
                                 </div>
                                 {% endif %}
                                 
                                 {% if photo.contractor_notes %}
-                                <div class="bg-secondary bg-opacity-25 p-1 rounded mt-auto border border-info border-opacity-50">
-                                    <p class="mb-0 text-info text-wrap" style="font-size: 0.65rem; line-height: 1.2;"><i class="fas fa-hard-hat me-1"></i><strong>Con:</strong> {{ photo.contractor_notes }}</p>
+                                <div class="bg-secondary bg-opacity-25 p-2 rounded mb-2 border border-info border-opacity-50">
+                                    <p class="mb-0 text-info text-wrap" style="font-size: 0.75rem; line-height: 1.3;"><i class="fas fa-hard-hat me-1"></i><strong>Con:</strong> {{ photo.contractor_notes }}</p>
                                 </div>
                                 {% endif %}
+                                
+                                <div class="bg-primary bg-opacity-10 p-2 rounded mt-auto border border-primary border-opacity-25">
+                                    <p class="small text-light mb-0"><i class="fas fa-robot text-primary me-1"></i> <strong>Stratix AI Tags:</strong> {{ photo.ai_tags|default:"No anomalies tagged." }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -98,4 +229,74 @@
         </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let groqModalInstance;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        groqModalInstance = new bootstrap.Modal(document.getElementById('groqModal'));
+    });
+
+    function openGroqModal(targetFieldId) {
+        document.getElementById('groqTargetField').value = targetFieldId;
+        groqModalInstance.show();
+    }
+
+    function triggerGroqRewrite(style) {
+        const targetFieldId = document.getElementById('groqTargetField').value;
+        const targetField = document.getElementById(targetFieldId);
+        const originalText = targetField.value;
+
+        if (!originalText.trim()) {
+            alert("There is no text to rewrite!");
+            groqModalInstance.hide();
+            return;
+        }
+
+        // Hide modal and show loading state
+        groqModalInstance.hide();
+        targetField.classList.add('groq-loading');
+        
+        // Temporarily change text to indicate processing
+        const backupText = targetField.value;
+        targetField.value = "⚡ Stratix AI is rewriting this at hyperspeed...";
+        targetField.disabled = true;
+
+        fetch("{% url 'groq_rewrite' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                text: backupText,
+                style: style
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            targetField.classList.remove('groq-loading');
+            targetField.disabled = false;
+            
+            if (data.error) {
+                targetField.value = backupText;
+                alert("Stratix AI Error: " + data.error);
+            } else {
+                targetField.value = data.rewritten_text;
+                // Add a cool little green flash effect to show it worked
+                targetField.style.backgroundColor = 'rgba(25, 135, 84, 0.2)';
+                setTimeout(() => { targetField.style.backgroundColor = '#0f172a'; }, 500);
+            }
+        })
+        .catch(error => {
+            targetField.classList.remove('groq-loading');
+            targetField.disabled = false;
+            targetField.value = backupText;
+            alert("Connection error occurred.");
+        });
+    }
+</script>
 {% endblock %}
