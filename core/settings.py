@@ -9,8 +9,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-stratix-default-key-123')
 
-# 🚀 Dynamic Allowed Hosts for AWS/GCP
-ALLOWED_HOSTS = ['*'] if DEBUG else config('ALLOWED_HOSTS', default='*').split(',')
+# 🚀 Dynamic Allowed Hosts for AWS/GCP/Render
+ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
     'https://stratix-dashboard.onrender.com',
@@ -71,8 +71,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 ASGI_APPLICATION = 'core.asgi.application'
 
-# 🚀 AWS / GCP DATABASE CONFIGURATION
-# It defaults to local sqlite3, but will instantly switch to PostgreSQL if you provide a DATABASE_URL
+# 🚀 POSTGRESQL / SUPABASE DATABASE CONFIGURATION
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL', default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3')),
@@ -93,9 +92,12 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# 🚀 STATIC FILES (Whitenoise)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+# Tell Whitenoise to compress static files
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -120,36 +122,35 @@ else:
     }
 
 # ----------------------------------------------------------------------
-# 🚀 DJANGO 5.1 STORAGE CONFIGURATION
+# 🚀 DJANGO 5.1 STORAGE CONFIGURATION (S3 / SUPABASE)
 # ----------------------------------------------------------------------
-if not DEBUG:
-    SUPABASE_PROJECT_REF = config('SUPABASE_PROJECT_REF', default='')
-    AWS_ACCESS_KEY_ID = config('SUPABASE_S3_ACCESS_KEY', default='')
-    AWS_SECRET_ACCESS_KEY = config('SUPABASE_S3_SECRET_KEY', default='')
-    SUPABASE_STORAGE_BUCKET_NAME = config('SUPABASE_STORAGE_BUCKET_NAME', default='site-photos')
+SUPABASE_PROJECT_REF = config('SUPABASE_PROJECT_REF', default='')
+AWS_ACCESS_KEY_ID = config('SUPABASE_S3_ACCESS_KEY', default='')
+AWS_SECRET_ACCESS_KEY = config('SUPABASE_S3_SECRET_KEY', default='')
+SUPABASE_STORAGE_BUCKET_NAME = config('SUPABASE_STORAGE_BUCKET_NAME', default='site-photos')
 
-    if SUPABASE_PROJECT_REF and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-        AWS_S3_ENDPOINT_URL = f'https://{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/s3'
-        AWS_STORAGE_BUCKET_NAME = SUPABASE_STORAGE_BUCKET_NAME
-        AWS_S3_REGION_NAME = 'us-east-1' 
-        AWS_S3_SIGNATURE_VERSION = 's3v4'
-        AWS_S3_FILE_OVERWRITE = False
-        AWS_DEFAULT_ACL = None 
-        AWS_S3_ADDRESSING_STYLE = 'path'
-        AWS_QUERYSTRING_AUTH = False 
-        
-        AWS_S3_CUSTOM_DOMAIN = f'{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET_NAME}'
-        AWS_S3_USE_SSL = True
-        MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+if SUPABASE_PROJECT_REF and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
+    AWS_S3_ENDPOINT_URL = f'https://{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/s3'
+    AWS_STORAGE_BUCKET_NAME = SUPABASE_STORAGE_BUCKET_NAME
+    AWS_S3_REGION_NAME = 'us-east-1' 
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = None 
+    AWS_S3_ADDRESSING_STYLE = 'path'
+    AWS_QUERYSTRING_AUTH = False 
+    
+    AWS_S3_CUSTOM_DOMAIN = f'{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET_NAME}'
+    AWS_S3_USE_SSL = True
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
 
-        STORAGES = {
-            "default": {
-                "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            },
-            "staticfiles": {
-                "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-            },
-        }
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 else:
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -158,7 +159,7 @@ else:
             "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 
