@@ -187,11 +187,18 @@ Role: {instance.get_role_display()}
 Username: {instance.user.username}
 Login Portal: https://stratix-dashboard.onrender.com/
 
-Password: (Please use the password securely provided by your Administrator)
 =========================================
+HOW TO SET YOUR PASSWORD
+=========================================
+For security reasons, your password is not transmitted via email. 
+To set up your password and log in for the first time:
+1. Click the 'Login Portal' link above.
+2. Click the yellow 'Forgot Password?' link on the login screen.
+3. Enter the email address associated with this account.
+4. Follow the link sent to your email to create your permanent password.
 
 SECURITY WARNING: 
-This is a secure system. Do not share these credentials with anyone. If you lose your password, please use the 'Forgot Password' link on the login page.
+This is a secure system. Do not share your credentials with anyone. 
 
 Regards,
 Stratix Support Team
