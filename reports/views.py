@@ -1200,3 +1200,16 @@ Do not add any other text. Return ONLY the JSON object."""
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+# -----------------------------------------------------------------------------
+# USER ONBOARDING TUTORIAL TRACKER
+# -----------------------------------------------------------------------------
+@csrf_exempt
+@login_required
+def mark_tutorial_seen(request):
+    if request.method == 'POST':
+        profile = request.user.profile
+        profile.has_seen_tutorial = True
+        profile.save()
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'error': 'Invalid request method'}, status=405)

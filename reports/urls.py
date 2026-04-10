@@ -29,6 +29,7 @@ urlpatterns = [
     path('map/', views.geographical_map_view, name='global_map'),
     path('export-csv/', views.export_performance_csv, name='export_performance_csv'),
     path('support/', views.support_page, name='support_page'),
+    path('api/tutorial-seen/', views.mark_tutorial_seen, name='mark_tutorial_seen'),
     path('api/nl-filter/', views.nl_filter_translator, name='nl_filter_translator'),
     path('client-portal/', views.client_portal, name='client_portal'), # 🚀 NEW: Client Portal Route
     path('manifest.json', TemplateView.as_view(template_name='reports/manifest.json', content_type='application/json'), name='manifest'),

@@ -43,6 +43,9 @@ class UserProfile(models.Model):
         ('Tech Writer', 'Technical Report Writer'), 
     ], default='Client')
 
+    # 🚀 NEW: Tracks if the user has seen the onboarding tour
+    has_seen_tutorial = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
 
