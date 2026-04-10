@@ -42,9 +42,10 @@ class UserProfile(models.Model):
         ('QA', 'QA'),
         ('Tech Writer', 'Technical Report Writer'), 
     ], default='Client')
-
-    # 🚀 NEW: Tracks if the user has seen the onboarding tour
     has_seen_tutorial = models.BooleanField(default=False)
+    
+    # 🚀 NEW: Tracks if we have sent their secure welcome email
+    welcome_email_sent = models.BooleanField(default=False) 
 
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
@@ -168,6 +169,45 @@ def sync_role_and_group(sender, instance, **kwargs):
         group, _ = Group.objects.get_or_create(name=group_name)
         instance.user.groups.clear()
         instance.user.groups.add(group)
+
+    # 🚀 NEW: Send Secure Welcome Email once they have an email address
+    if not instance.welcome_email_sent and instance.user.email:
+        from django.core.mail import send_mail
+        from django.conf import settings
+
+        subject = "Your Stratix Command Credentials"
+        message = f"""Hello {instance.user.first_name or instance.user.username},
+
+Your secure access to the Stratix Real-Time Tracking Platform has been activated.
+
+=========================================
+ACCOUNT DETAILS
+=========================================
+Role: {instance.get_role_display()}
+Username: {instance.user.username}
+Login Portal: https://stratix-dashboard.onrender.com/
+
+Password: (Please use the password securely provided by your Administrator)
+=========================================
+
+SECURITY WARNING: 
+This is a secure system. Do not share these credentials with anyone. If you lose your password, please use the 'Forgot Password' link on the login page.
+
+Regards,
+Stratix Support Team
+"""
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [instance.user.email],
+                fail_silently=True,
+            )
+            # Update the database so we never send this specific user the welcome email again
+            UserProfile.objects.filter(pk=instance.pk).update(welcome_email_sent=True)
+        except Exception as e:
+            print(f"Email failed to send: {e}")
 
 @receiver(post_save, sender=ActivityAlert)
 def trigger_client_fetch(sender, instance, created, **kwargs):
