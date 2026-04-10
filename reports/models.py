@@ -175,7 +175,7 @@ def sync_role_and_group(sender, instance, **kwargs):
         from django.core.mail import send_mail
         from django.conf import settings
 
-        subject = "Your Stratix Command Credentials"
+        subject = "Your Stratix Dashboard Credentials"
         message = f"""Hello {instance.user.first_name or instance.user.username},
 
 Your secure access to the Stratix Real-Time Tracking Platform has been activated.
