@@ -12,13 +12,18 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-stratix-defaul
 # 🚀 Dynamic Allowed Hosts for AWS/GCP/Render
 ALLOWED_HOSTS = ['*']
 
+# 🚀 UPDATED: Production URLs for CSRF Protection
 CSRF_TRUSTED_ORIGINS = [
     'https://stratix-dashboard.onrender.com',
     'https://stratixjm-dashboard.onrender.com',
 ]
-# Add your production AWS URL here once you have it!
-if config('PRODUCTION_URL', default=''):
-    CSRF_TRUSTED_ORIGINS.append(config('PRODUCTION_URL'))
+
+# If a custom production URL is set in the environment variables, format it and add it
+prod_url = config('PRODUCTION_URL', default='')
+if prod_url:
+    if not prod_url.startswith('http'):
+        prod_url = f'https://{prod_url}'
+    CSRF_TRUSTED_ORIGINS.append(prod_url)
 
 INSTALLED_APPS = [
     'jazzmin', 
@@ -96,7 +101,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
-# Tell Whitenoise to compress static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
