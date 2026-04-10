@@ -31,6 +31,9 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var map = L.map('siteMap').setView([20, 0], 3);
+
+        // 🚀 ADD THIS LINE: Removes the "Leaflet" prefix
+        miniMap.attributionControl.setPrefix(false);
         
         // High-contrast Dark Mode Map Tiles
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
