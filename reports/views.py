@@ -52,17 +52,15 @@ def get_site_map_status(site):
     """Calculates map colors based on Gemini AI Risk Scores first, then manual issues."""
     report = site.reports.first()
     
-    # 1. AI Risk Assessment takes highest priority
     if report and report.structural_risk_score:
         score = report.structural_risk_score
         if score >= 8:
-            return f'AI Critical Risk ({score}/10)', '#ef4444' # Red
+            return f'AI Critical Risk ({score}/10)', '#ef4444' 
         elif score >= 5:
-            return f'AI Moderate Risk ({score}/10)', '#f59e0b' # Amber/Yellow
+            return f'AI Moderate Risk ({score}/10)', '#f59e0b' 
         else:
-            return f'AI Low Risk ({score}/10)', '#10b981' # Green
+            return f'AI Low Risk ({score}/10)', '#10b981' 
 
-    # 2. Fallback to manual issues if the AI hasn't analyzed it yet
     issues = site.issues.filter(is_resolved=False)
     if issues.filter(severity='Critical').exists():
         return 'Manual Critical Issue', '#ef4444' 
@@ -103,7 +101,6 @@ def dashboard_home(request):
         reports = base_reports
         current_project = None
 
-    # 🚀 STRATIX AI: GOD MODE NATURAL LANGUAGE FILTERS
     nl_location = request.GET.get('location')
     nl_urgency = request.GET.get('urgency')
     nl_contractor = request.GET.get('contractor')
@@ -475,7 +472,7 @@ def finish_upload(request, site_id):
         if report and report.status == 'visit_in_progress':
             try:
                 client = genai.Client(api_key=settings.GEMINI_API_KEY)
-                # 🚀 NEW: Grab up to 100 photos, but order them by Category so the AI sees the whole site
+                
                 recent_photos = list(SitePhoto.objects.filter(site=site).order_by('category', '-uploaded_at')[:100])
                 
                 active_prompt = AIPromptSettings.objects.filter(is_active=True).first()
@@ -486,12 +483,21 @@ def finish_upload(request, site_id):
                 notes_list = [f"- {p.category}: {p.contractor_notes}" for p in recent_photos if p.contractor_notes]
                 notes_text = "\n".join(notes_list) if notes_list else "No contractor field notes provided."
 
+                # 🚀 NEW: Integrated Client Design Data
                 dynamic_context = f"""
                 --- LIVE DATABASE INPUT DATA ---
                 Location: {site.location}
                 Coordinates: {site.latitude}, {site.longitude}
                 Site Height: {site.height_in_meters} meters
                 Criticality Level: {site.criticality_level}
+                
+                --- SITE DESIGN / EXPECTED CONFIGURATION ---
+                Tower Type: {site.tower_type or 'Unknown'}
+                Expected Antenna Count: {site.expected_antenna_count or 'Unknown'}
+                Expected Azimuth: {site.expected_azimuth or 'Unknown'}
+                Expected Tilt: {site.expected_tilt or 'Unknown'}
+                Sector/Equipment Layout: {site.sector_layout or 'Unknown'}
+                
                 Previous Inspection/Issues Data: {issues_text}
                 CONTRACTOR FIELD NOTES: {notes_text}
                 --------------------------------
@@ -506,10 +512,9 @@ def finish_upload(request, site_id):
                         response = requests.get(img_url, timeout=10)
                         if response.status_code == 200:
                             img = Image.open(BytesIO(response.content)).convert("RGB")
-                            # 🚀 NEW: Aggressively compress to 800x800 to allow 100+ photos without timeout
                             img.thumbnail((800, 800)) 
                             prompt_content.append(img)
-                            pil_images.append((p, img)) # Keep track of which image is which
+                            pil_images.append((p, img))
 
                 if len(pil_images) > 0:
                     ai_response = client.models.generate_content(
@@ -517,24 +522,21 @@ def finish_upload(request, site_id):
                         contents=prompt_content
                     )
                     ai_text = ai_response.text.strip()
-                    # 🚀 V2.0 CRASH-PROOF JSON EXTRACTOR
+                    
                     json_match = re.search(r'\{.*\}', ai_text, re.DOTALL)
                     if json_match:
                         ai_text = json_match.group(0)
 
                     try:
-                        # Standard JSON parse
                         ai_data = json.loads(ai_text.strip())
                     except json.JSONDecodeError:
-                        # If Gemini messes up the quotation marks, we use AST as a bulletproof fallback!
                         import ast
-                        # Convert unescaped double quotes inside strings to single quotes to save the dictionary
                         fixed_text = re.sub(r'(?<!\\)"(?!:|,|\s*\}|\s*\])', "'", ai_text)
                         try:
                             ai_data = ast.literal_eval(fixed_text.strip())
                         except Exception as e2:
                             print(f"AST Fallback Failed: {e2}")
-                            ai_data = {} # Fail gracefully
+                            ai_data = {}
 
                     report.structural_risk_score = ai_data.get('structural_risk_score')
                     report.equipment_damage_score = ai_data.get('equipment_damage_score')
@@ -552,7 +554,6 @@ def finish_upload(request, site_id):
                     for index, (photo_obj, pil_img) in enumerate(pil_images):
                         photo_obj.ai_tags = ai_data.get('ai_tags', '')
                         
-                        # Find boxes for this specific image index
                         photo_boxes = [b for b in boxes_data if b.get('photo_index') == index]
                         if photo_boxes:
                             draw = ImageDraw.Draw(pil_img)
@@ -992,7 +993,6 @@ def delete_photo(request, photo_id):
 @require_POST
 def resolve_issue(request, issue_id):
     user = request.user
-    # Only allow Admins and QA to resolve issues
     if not (user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['Admin', 'QA'])):
         return redirect('dashboard_home')
         
@@ -1000,7 +1000,6 @@ def resolve_issue(request, issue_id):
     issue.is_resolved = True
     issue.save()
     
-    # Log the action
     ActivityAlert.objects.create(
         message=f"Site Issue Resolved: {issue.site.site_id}", 
         user=request.user, 
@@ -1011,9 +1010,6 @@ def resolve_issue(request, issue_id):
     
     return redirect('site_issues_list')
 
-# -----------------------------------------------------------------------------
-# STRATIX AI: AUTOPILOT (TECH WRITER HUB)
-# -----------------------------------------------------------------------------
 @csrf_exempt
 @login_required
 def groq_rewrite(request):
@@ -1056,16 +1052,9 @@ def groq_rewrite(request):
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-# -----------------------------------------------------------------------------
-# STRATIX AI: CONSULTANT CHAT WITH PDF VISION (CLIENT PORTAL)
-# -----------------------------------------------------------------------------
 @csrf_exempt
 @login_required
 def report_chat(request):
-    """
-    Allows clients to ask questions about a specific report.
-    Acts as an elite telecommunications consultant, utilizing both DB data and PDF text.
-    """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -1081,7 +1070,6 @@ def report_chat(request):
                 if report.site.project.client != request.user.profile.client:
                     return JsonResponse({'error': 'Unauthorized Access'}, status=403)
 
-            # --- Extract Text from the Uploaded PDF (if it exists) ---
             pdf_text = ""
             if report.final_document:
                 try:
@@ -1097,7 +1085,6 @@ def report_chat(request):
             else:
                 pdf_text = "[No PDF attached to this report yet.]"
 
-            # --- Build the Database Fact Sheet ---
             db_context = f"""
             Site ID: {report.site.site_id}
             Site Name: {report.site.site_name}
@@ -1115,7 +1102,6 @@ def report_chat(request):
             {report.predictive_risk_outlook}
             """
 
-            # --- The New "Concise Consultant Mode" Prompt ---
             system_prompt = f"""You are 'Stratix AI', an elite telecommunications infrastructure consultant advising a client.
 Your goal is to give the client clear, actionable, and highly concise answers about their site report.
 
@@ -1135,7 +1121,6 @@ INSTRUCTIONS FOR YOU:
 4. Be empathetic and professional, but EXTREMELY CONCISE. Do not write long essays. Use bullet points if it helps with readability. Answer the exact question asked without unnecessary fluff or rambling.
 """
 
-            # Connect to Groq
             load_dotenv()
             client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
             
@@ -1155,14 +1140,10 @@ INSTRUCTIONS FOR YOU:
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-# -----------------------------------------------------------------------------
-# STRATIX AI: GOD MODE DASHBOARD FILTER (NATURAL LANGUAGE TO JSON)
-# -----------------------------------------------------------------------------
 @csrf_exempt
 @login_required
 def nl_filter_translator(request):
     if request.method == 'POST':
-        # Security: Only Admins and QA can use the God Mode search
         if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['Admin', 'QA'])):
             return JsonResponse({'error': 'Unauthorized'}, status=403)
 
@@ -1204,9 +1185,6 @@ Do not add any other text. Return ONLY the JSON object."""
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
-# -----------------------------------------------------------------------------
-# USER ONBOARDING TUTORIAL TRACKER
-# -----------------------------------------------------------------------------
 @csrf_exempt
 @login_required
 def mark_tutorial_seen(request):
@@ -1220,27 +1198,22 @@ def mark_tutorial_seen(request):
 
 @login_required
 def download_site_photos_zip(request, site_id):
-    # Only let Admins, QA, or Tech Writers bulk download
     if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['Admin', 'QA', 'Tech Writer'])):
         return redirect('dashboard_home')
         
     site = get_object_or_404(Site, id=site_id)
-    # Grab all photos for the site
     photos = SitePhoto.objects.filter(site=site)
     
-    # Create an in-memory ZIP file
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for photo in photos:
             if photo.image:
                 try:
-                    # Read the image from Supabase/Storage and put it in the zip
                     file_name = f"{photo.category.replace(' ', '_')}_{os.path.basename(photo.image.name)}"
                     zip_file.writestr(file_name, photo.image.read())
                 except Exception as e:
                     print(f"Error zipping photo {photo.id}: {e}")
 
-    # Send the ZIP file to the browser
     response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
     response['Content-Disposition'] = f'attachment; filename="{site.site_id}_Drone_Capture.zip"'
     return response
