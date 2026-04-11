@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/report-chat/', views.report_chat, name='report_chat'),
     path('upload/', views.upload_photos, name='upload_photos'),
     path('api/drone-upload/', views.api_drone_upload, name='api_drone_upload'),
+    path('api/webhooks/dronedeploy/', views.dronedeploy_webhook, name='dronedeploy_webhook'),
     path('upload/finish/<int:site_id>/', views.finish_upload, name='finish_upload'),
     path('sites/', views.site_visit_list, name='site_visit_list'),
     path('issues/', views.site_issues_list, name='site_issues'),
