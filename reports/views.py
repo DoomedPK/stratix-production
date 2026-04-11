@@ -475,8 +475,8 @@ def finish_upload(request, site_id):
         if report and report.status == 'visit_in_progress':
             try:
                 client = genai.Client(api_key=settings.GEMINI_API_KEY)
-                # Increased from 5 to 35 photos to give the AI a massive visual context of the site
-                recent_photos = list(SitePhoto.objects.filter(site=site).order_by('-uploaded_at')[:35])
+                # 🚀 NEW: Grab up to 100 photos, but order them by Category so the AI sees the whole site
+                recent_photos = list(SitePhoto.objects.filter(site=site).order_by('category', '-uploaded_at')[:100])
                 
                 active_prompt = AIPromptSettings.objects.filter(is_active=True).first()
                 base_instruction = active_prompt.prompt_text if active_prompt and active_prompt.prompt_text else "Analyze these photos."
@@ -506,7 +506,8 @@ def finish_upload(request, site_id):
                         response = requests.get(img_url, timeout=10)
                         if response.status_code == 200:
                             img = Image.open(BytesIO(response.content)).convert("RGB")
-                            img.thumbnail((1000, 1000)) # Ensure resolution is high enough for boxes
+                            # 🚀 NEW: Aggressively compress to 800x800 to allow 100+ photos without timeout
+                            img.thumbnail((800, 800)) 
                             prompt_content.append(img)
                             pil_images.append((p, img)) # Keep track of which image is which
 
