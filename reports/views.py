@@ -309,27 +309,44 @@ def import_sites(request):
             error_count = 0
             
             for row in reader:
+                # Standardize column headers (lowercase, stripped spaces)
                 clean_row = {k.strip().lower(): v.strip() for k, v in row.items() if k}
+                
+                # Required Fields
                 site_id = clean_row.get('site_id')
-                site_name = clean_row.get('site_name', 'Unnamed Site')
                 project_name = clean_row.get('project')
-                location = clean_row.get('location', '')
-                lat_val = clean_row.get('latitude')
-                lng_val = clean_row.get('longitude')
-                height_val = clean_row.get('site_height')
-                priority = clean_row.get('priority', 'Medium')
-
+                
                 if not site_id or not project_name:
                     error_count += 1
                     continue
-                    
+                
+                # Standard Fields
+                site_name = clean_row.get('site_name', 'Unnamed Site')
+                location = clean_row.get('location', '')
+                priority = clean_row.get('priority', 'Medium')
+                
+                # Number parsing
+                lat_val = clean_row.get('latitude')
+                lng_val = clean_row.get('longitude')
+                height_val = clean_row.get('site_height')
+                
                 latitude = float(lat_val) if lat_val else None
                 longitude = float(lng_val) if lng_val else None
                 height_in_meters = float(height_val) if height_val else None
                 
+                # 🚀 NEW: Client Design Data Fields
+                tower_type = clean_row.get('tower_type', '')
+                ant_count_val = clean_row.get('expected_antenna_count')
+                expected_antenna_count = int(ant_count_val) if ant_count_val and ant_count_val.isdigit() else None
+                expected_azimuth = clean_row.get('expected_azimuth', '')
+                expected_tilt = clean_row.get('expected_tilt', '')
+                sector_layout = clean_row.get('sector_layout', '')
+                
+                # Project & Client association
                 default_client, _ = Client.objects.get_or_create(name="Unassigned Client (Auto-Imported)")
                 project, p_created = Project.objects.get_or_create(name=project_name, defaults={'client': default_client})
                 
+                # Create or Update the Site
                 site, s_created = Site.objects.update_or_create(
                     site_id=site_id,
                     defaults={
@@ -339,7 +356,13 @@ def import_sites(request):
                         'latitude': latitude, 
                         'longitude': longitude, 
                         'height_in_meters': height_in_meters,
-                        'priority': priority
+                        'priority': priority,
+                        # 🚀 Mapping the new design fields
+                        'tower_type': tower_type,
+                        'expected_antenna_count': expected_antenna_count,
+                        'expected_azimuth': expected_azimuth,
+                        'expected_tilt': expected_tilt,
+                        'sector_layout': sector_layout
                     }
                 )
                 
@@ -1088,6 +1111,15 @@ def report_chat(request):
             db_context = f"""
             Site ID: {report.site.site_id}
             Site Name: {report.site.site_name}
+            
+            --- EXPECTED SITE DESIGN ---
+            Tower Type: {report.site.tower_type or 'Unknown'}
+            Expected Antenna Count: {report.site.expected_antenna_count or 'Unknown'}
+            Expected Azimuth: {report.site.expected_azimuth or 'Unknown'}
+            Expected Tilt: {report.site.expected_tilt or 'Unknown'}
+            Sector/Equipment Layout: {report.site.sector_layout or 'Unknown'}
+            ----------------------------
+            
             Structural Risk Score: {report.structural_risk_score}/10
             Urgency Flag: {report.urgency_flag}
             Recommended Repair Timeline: {report.ai_repair_timeline}
