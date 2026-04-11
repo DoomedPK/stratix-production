@@ -474,7 +474,8 @@ def finish_upload(request, site_id):
         if report and report.status == 'visit_in_progress':
             try:
                 client = genai.Client(api_key=settings.GEMINI_API_KEY)
-                recent_photos = list(SitePhoto.objects.filter(site=site).order_by('-uploaded_at')[:5])
+                # Increased from 5 to 35 photos to give the AI a massive visual context of the site
+                recent_photos = list(SitePhoto.objects.filter(site=site).order_by('-uploaded_at')[:35])
                 
                 active_prompt = AIPromptSettings.objects.filter(is_active=True).first()
                 base_instruction = active_prompt.prompt_text if active_prompt and active_prompt.prompt_text else "Analyze these photos."
