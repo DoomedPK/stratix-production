@@ -5,6 +5,7 @@ import io
 import datetime
 import time
 import requests
+import zipfile
 import re
 from io import BytesIO
 from dotenv import load_dotenv
@@ -1214,3 +1215,31 @@ def mark_tutorial_seen(request):
         profile.save()
         return JsonResponse({'status': 'success'})
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+@login_required
+def download_site_photos_zip(request, site_id):
+    # Only let Admins, QA, or Tech Writers bulk download
+    if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['Admin', 'QA', 'Tech Writer'])):
+        return redirect('dashboard_home')
+        
+    site = get_object_or_404(Site, id=site_id)
+    # Grab all photos for the site
+    photos = SitePhoto.objects.filter(site=site)
+    
+    # Create an in-memory ZIP file
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for photo in photos:
+            if photo.image:
+                try:
+                    # Read the image from Supabase/Storage and put it in the zip
+                    file_name = f"{photo.category.replace(' ', '_')}_{os.path.basename(photo.image.name)}"
+                    zip_file.writestr(file_name, photo.image.read())
+                except Exception as e:
+                    print(f"Error zipping photo {photo.id}: {e}")
+
+    # Send the ZIP file to the browser
+    response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{site.site_id}_Drone_Capture.zip"'
+    return response
