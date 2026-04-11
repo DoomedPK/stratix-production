@@ -44,7 +44,6 @@ class UserProfile(models.Model):
     ], default='Client')
     has_seen_tutorial = models.BooleanField(default=False)
     
-    # 🚀 NEW: Tracks if we have sent their secure welcome email
     welcome_email_sent = models.BooleanField(default=False) 
 
     def __str__(self):
@@ -61,6 +60,13 @@ class Site(models.Model):
     criticality_level = models.CharField(max_length=20, choices=[('Low', 'Low'), ('Medium', 'Medium'), ('High', 'High Priority Node')], default='Medium')
     priority = models.CharField(max_length=20, choices=[('Low', 'Low'), ('Medium', 'Medium'), ('High', 'High')], default='Medium')
     height_in_meters = models.FloatField(null=True, blank=True, help_text="Site height in meters")
+
+    # 🚀 NEW: Client-Provided Design Data
+    tower_type = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., Monopole, Lattice, Guyed Mast, Rooftop")
+    expected_antenna_count = models.IntegerField(blank=True, null=True, help_text="Total number of antennas the client expects on site")
+    expected_azimuth = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., Sector A: 120°, Sector B: 240°")
+    expected_tilt = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., 4° downtilt on all sectors")
+    sector_layout = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., 3 Sectors, Huawei AAU panels")
 
     def __str__(self):
         return f"{self.site_id} - {self.site_name}"
@@ -170,7 +176,6 @@ def sync_role_and_group(sender, instance, **kwargs):
         instance.user.groups.clear()
         instance.user.groups.add(group)
 
-    # 🚀 NEW: Send Secure Welcome Email once they have an email address
     if not instance.welcome_email_sent and instance.user.email:
         from django.core.mail import send_mail
         from django.conf import settings
@@ -211,7 +216,6 @@ Stratix Support Team
                 [instance.user.email],
                 fail_silently=True,
             )
-            # Update the database so we never send this specific user the welcome email again
             UserProfile.objects.filter(pk=instance.pk).update(welcome_email_sent=True)
         except Exception as e:
             print(f"Email failed to send: {e}")
