@@ -15,9 +15,10 @@ class ProjectAdmin(admin.ModelAdmin):
 
 @admin.register(Site)
 class SiteAdmin(admin.ModelAdmin):
-    list_display = ('site_id', 'site_name', 'project', 'criticality_level', 'priority')
+    # 🚀 NEW: Added tower_type to the list display so Admins can see the design data at a glance
+    list_display = ('site_id', 'site_name', 'project', 'tower_type', 'criticality_level', 'priority')
     list_editable = ('criticality_level', 'priority')
-    list_filter = ('criticality_level', 'priority', 'project')
+    list_filter = ('criticality_level', 'priority', 'project', 'tower_type')
     search_fields = ('site_id', 'site_name')
     filter_horizontal = ('assigned_contractors',)
 
@@ -62,13 +63,11 @@ class SupportTicketAdmin(admin.ModelAdmin):
     has_screenshot.boolean = True
     has_screenshot.short_description = 'Screenshot'
 
-# 🚀 V2.0 DYNAMIC AI PROMPT CONFIGURATION
 @admin.register(AIPromptSettings)
 class AIPromptSettingsAdmin(admin.ModelAdmin):
     list_display = ('name', 'is_active', 'updated_at')
     list_editable = ('is_active',)
 
-# 🚀 PHASE 3: ENTERPRISE DRONE API KEY MANAGEMENT
 @admin.register(DroneAPIKey)
 class DroneAPIKeyAdmin(admin.ModelAdmin):
     list_display = ('contractor', 'key_preview', 'is_active', 'created_at')
@@ -78,7 +77,6 @@ class DroneAPIKeyAdmin(admin.ModelAdmin):
     actions = ['revoke_keys', 'activate_keys']
 
     def key_preview(self, obj):
-        # Shows a preview of the key so the full string isn't flooding the admin table
         if obj.key:
             return f"{obj.key[:10]}...{obj.key[-4:]}"
         return "Not Generated"
