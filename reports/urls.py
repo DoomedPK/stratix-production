@@ -12,6 +12,7 @@ urlpatterns = [
     path('upload/finish/<int:site_id>/', views.finish_upload, name='finish_upload'),
     path('sites/', views.site_visit_list, name='site_visit_list'),
     path('issues/', views.site_issues_list, name='site_issues'),
+    path('sites/download-zip/<int:site_id>/', views.download_site_photos_zip, name='download_site_photos_zip'),
     path('issues/resolve/<int:issue_id>/', views.resolve_issue, name='resolve_issue'),
     path('issues/report/<int:site_id>/', views.report_issue, name='report_issue'),
     path('start-visit/<int:report_id>/', views.start_visit, name='start_visit'),
