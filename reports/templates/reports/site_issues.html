@@ -59,7 +59,7 @@
 
     {% for issue in issues %}
     <div class="modal fade" id="issueModal{{ issue.id }}" tabindex="-1" aria-labelledby="issueModalLabel{{ issue.id }}" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content bg-dark border-secondary text-light shadow-lg">
                 <div class="modal-header border-secondary {% if issue.description|slice:':18' == '[AI AUTO-DETECTED]' %}border-bottom border-primary{% endif %}">
                     <h5 class="modal-title fw-bold" id="issueModalLabel{{ issue.id }}">
@@ -86,24 +86,69 @@
                         </div>
                     {% endif %}
                 </div>
-                <div class="modal-footer border-secondary d-flex justify-content-between">
+                <div class="modal-footer border-secondary d-flex justify-content-between align-items-center">
                     <div>
                         {% if user.is_superuser or user.profile.role == 'Admin' or user.profile.role == 'QA' %}
-                        <form method="POST" action="{% url 'resolve_issue' issue.id %}" style="display: inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-success fw-bold">
-                                <i class="fas fa-check-circle me-1"></i> Mark as Fixed
+                        <div class="d-flex gap-2">
+                            <form method="POST" action="{% url 'resolve_issue' issue.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm fw-bold">
+                                    <i class="fas fa-check-circle me-1"></i> Mark Fixed
+                                </button>
+                            </form>
+
+                            <button type="button" class="btn btn-outline-info btn-sm fw-bold" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#editIssueModal{{ issue.id }}">
+                                <i class="fas fa-edit me-1"></i> Edit Text
                             </button>
-                        </form>
+
+                            <form method="POST" action="{% url 'delete_issue' issue.id %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to permanently delete this issue as a false positive?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger btn-sm fw-bold">
+                                    <i class="fas fa-trash-alt me-1"></i> Dismiss Error
+                                </button>
+                            </form>
+                        </div>
                         {% endif %}
                     </div>
-                    <div>
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Close Window</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal">Close</button>
                         {% if user.profile.role != 'Contractor' %}
-                            <a href="{% url 'qa_hub' %}" class="btn btn-primary fw-bold">Jump to QA Hub</a>
+                            <a href="{% url 'qa_hub' %}" class="btn btn-primary btn-sm fw-bold">QA Hub</a>
                         {% endif %}
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editIssueModal{{ issue.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary shadow-lg text-light">
+                <div class="modal-header border-secondary border-opacity-25">
+                    <h5 class="modal-title fw-bold text-info"><i class="fas fa-edit me-2"></i> Correct AI Issue</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{% url 'edit_issue' issue.id %}">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold">Severity Level</label>
+                            <select name="severity" class="form-select bg-dark text-light border-secondary">
+                                <option value="Critical" {% if issue.severity == 'Critical' %}selected{% endif %}>Critical</option>
+                                <option value="Major" {% if issue.severity == 'Major' %}selected{% endif %}>Major</option>
+                                <option value="Minor" {% if issue.severity == 'Minor' %}selected{% endif %}>Minor</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold">Issue Description</label>
+                            <textarea name="description" class="form-control bg-dark text-light border-secondary" rows="8" required>{{ issue.description }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary border-opacity-25">
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#issueModal{{ issue.id }}">Back</button>
+                        <button type="submit" class="btn btn-info fw-bold">Save Corrections</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

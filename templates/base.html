@@ -32,9 +32,10 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        /* 🚀 FIX: Removed the 'transform' property to prevent the Fancybox scrolling bug 🚀 */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         /* MAC OS CUSTOM SCROLLBARS */
@@ -379,6 +380,11 @@
             });
 
             function checkBodyPosition() {
+                // 🚀 THE FIX: If Fancybox is open, stop forcing top: 0px!
+                if (document.querySelector('.fancybox__container')) {
+                    return; 
+                }
+                
                 if ($('body').css('top') !== '0px') {
                     $('body').css('top', '0px');
                 }
@@ -409,7 +415,9 @@
                            "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
                 });
             }
-            Fancybox.bind('[data-fancybox="gallery"]', {});
+            Fancybox.bind('[data-fancybox="gallery"]', {
+                hideScrollbar: false,
+            });
         });
     </script>
     

@@ -709,6 +709,15 @@ def qa_review(request, site_id):
 
     if request.method == 'POST':
         action = request.POST.get('action')
+        # 🚀 NEW ADDITION: Catch the save notes button
+        if action == 'save_notes':
+            qa_notes = request.POST.get('qa_notes', '')
+            report = site.reports.first()
+            if report:
+                report.comments = qa_notes
+                report.save()
+                messages.success(request, "QA Handoff notes saved for the Tech Writer.")
+            return redirect('qa_review', site_id=site.id)
         
         if action == 'bulk_approve':
             photo_ids = request.POST.getlist('photo_ids')
@@ -1031,7 +1040,7 @@ def resolve_issue(request, issue_id):
     )
     messages.success(request, f"Issue for {issue.site.site_id} has been marked as completely fixed!")
     
-    return redirect('site_issues_list')
+    return redirect('site_issues')
 
 @csrf_exempt
 @login_required
@@ -1249,3 +1258,45 @@ def download_site_photos_zip(request, site_id):
     response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
     response['Content-Disposition'] = f'attachment; filename="{site.site_id}_Drone_Capture.zip"'
     return response
+
+@login_required
+@require_POST
+def delete_issue(request, issue_id):
+    user = request.user
+    if not (user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['Admin', 'QA'])):
+        return redirect('dashboard_home')
+        
+    issue = get_object_or_404(SiteIssue, id=issue_id)
+    site_id = issue.site.site_id
+    site = issue.site
+    issue.delete()
+    
+    ActivityAlert.objects.create(
+        message=f"QA removed a false-positive issue for {site_id}.", 
+        user=request.user, 
+        site=site, 
+        alert_type='UPLOAD'
+    )
+    messages.warning(request, f"Issue for {site_id} was permanently dismissed (False Positive).")
+    
+    return redirect('site_issues')
+
+@login_required
+@require_POST
+def edit_issue(request, issue_id):
+    user = request.user
+    if not (user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['Admin', 'QA'])):
+        return redirect('dashboard_home')
+        
+    issue = get_object_or_404(SiteIssue, id=issue_id)
+    new_description = request.POST.get('description')
+    new_severity = request.POST.get('severity')
+    
+    if new_description:
+        issue.description = new_description
+    if new_severity:
+        issue.severity = new_severity
+    issue.save()
+    
+    messages.success(request, f"Issue for {issue.site.site_id} was successfully corrected.")
+    return redirect('site_issues')

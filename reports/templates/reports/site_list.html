@@ -109,42 +109,6 @@
                             {% endif %}
                         </td>
                     </tr>
-                    
-                    {% if user.is_superuser or user.profile.role == 'QA' or user.profile.role == 'Admin' %}
-                    <div class="modal fade text-start" id="issueModal-{{ report.site.id }}" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content bg-dark border-secondary">
-                                <div class="modal-header border-secondary">
-                                    <h5 class="modal-title text-danger"><i class="fas fa-exclamation-triangle me-2"></i> Report Site Issue</h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                                <form method="POST" action="{% url 'report_issue' report.site.id %}">
-                                    {% csrf_token %}
-                                    <div class="modal-body">
-                                        <p class="text-light mb-3">Logging issue for Site: <strong class="text-info">{{ report.site.site_id }}</strong></p>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small fw-bold text-uppercase">Severity Level</label>
-                                            <select name="severity" class="form-select bg-dark text-light border-secondary">
-                                                <option value="Minor">Minor (Non-blocking)</option>
-                                                <option value="Major">Major (Requires intervention)</option>
-                                                <option value="Critical">Critical (Immediate block)</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small fw-bold text-uppercase">Issue Description</label>
-                                            <textarea name="description" class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Briefly describe the problem encountered on site..." required></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer border-secondary">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-danger text-light fw-bold">Submit Issue</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
                     {% endfor %}
                 </tbody>
             </table>
@@ -158,6 +122,46 @@
     </div>
     {% endif %}
 </div>
+
+{% if reports %}
+    {% for report in reports %}
+        {% if user.is_superuser or user.profile.role == 'QA' or user.profile.role == 'Admin' %}
+        <div class="modal fade text-start" id="issueModal-{{ report.site.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content bg-dark border-secondary">
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title text-danger"><i class="fas fa-exclamation-triangle me-2"></i> Report Site Issue</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form method="POST" action="{% url 'report_issue' report.site.id %}">
+                        {% csrf_token %}
+                        <div class="modal-body">
+                            <p class="text-light mb-3">Logging issue for Site: <strong class="text-info">{{ report.site.site_id }}</strong></p>
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold text-uppercase">Severity Level</label>
+                                <select name="severity" class="form-select bg-dark text-light border-secondary">
+                                    <option value="Minor">Minor (Non-blocking)</option>
+                                    <option value="Major">Major (Requires intervention)</option>
+                                    <option value="Critical">Critical (Immediate block)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold text-uppercase">Issue Description</label>
+                                <textarea name="description" class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Briefly describe the problem encountered on site..." required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-secondary">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger text-light fw-bold">Submit Issue</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
 {% endblock %}
 
 {% block extra_js %}
