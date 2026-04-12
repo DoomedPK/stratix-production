@@ -49,7 +49,6 @@ PHOTO_MINIMUMS = {
 # 🚀 V2.0 AI HEATMAP ENGINE
 # -------------------------------------------------------------------------
 def get_site_map_status(site):
-    """Calculates map colors based on Gemini AI Risk Scores first, then manual issues."""
     report = site.reports.first()
     
     if report and report.structural_risk_score:
@@ -432,6 +431,12 @@ def upload_photos(request):
     selected_site = get_object_or_404(Site, id=site_id) if site_id else None
 
     if request.method == 'POST' and selected_site:
+        # 🚀 FIX 1: The "Ghost Upload" Security Lock
+        report = selected_site.reports.first()
+        if report and report.status != 'visit_in_progress':
+            messages.error(request, "Action Denied: This site is locked for QA review or is already completed. No new photos can be uploaded.")
+            return redirect('dashboard_home')
+
         category = request.POST.get('category')
         notes = request.POST.get('contractor_notes')
         images = request.FILES.getlist('site_images')
@@ -451,7 +456,6 @@ def upload_photos(request):
 
     uploaded_photos = SitePhoto.objects.filter(site=selected_site, contractor=user).order_by('-uploaded_at') if selected_site else None
 
-    # 🚀 FIX: Calculate dynamic photo counts for the contractor's checklist
     current_counts = {}
     can_finish = True
     
@@ -470,7 +474,7 @@ def upload_photos(request):
         'uploaded_photos': uploaded_photos,
         'minimums': PHOTO_MINIMUMS,
         'current_counts': current_counts,
-        'can_finish': can_finish  # 🚀 Passed to template to lock the button!
+        'can_finish': can_finish
     })
 
 # -------------------------------------------------------------------------
@@ -762,7 +766,6 @@ def qa_review(request, site_id):
             photo.save()
             ActivityAlert.objects.create(message="QA rejected a photo.", user=request.user, site=site, alert_type='REWORK')
 
-        # 🚀 NEW: Manual Handoff Logic
         elif action == 'finalize_qa':
             report = Report.objects.filter(site=site).first()
             if report:
@@ -842,7 +845,6 @@ def draft_report(request, report_id):
         action = request.POST.get('action', 'submit_draft')
         comments = request.POST.get('comments', '')
         
-        # 🚀 FIX: Logic to handle returning the report back to QA
         if action == 'return_to_qa':
             report.status = 'qa_validation'
             report.comments = f"[RETURNED BY TECH WRITER]: {comments} | Previous Notes: {report.comments}"
@@ -851,7 +853,6 @@ def draft_report(request, report_id):
             messages.warning(request, "Report has been returned to the QA Hub.")
             return redirect('tech_writer_hub')
 
-        # Standard Submit Draft Logic
         final_pdf = request.FILES.get('final_document')
         report.client_executive_summary = request.POST.get('client_executive_summary', report.client_executive_summary)
         report.category_damage_breakdown = request.POST.get('category_damage_breakdown', report.category_damage_breakdown)
@@ -1048,6 +1049,13 @@ def delete_photo(request, photo_id):
     if request.method == 'POST':
         photo = get_object_or_404(SitePhoto, id=photo_id, contractor=request.user)
         site_id = photo.site.id
+        
+        # 🚀 FIX 1: The "Ghost Deletion" Security Lock
+        report = photo.site.reports.first()
+        if report and report.status != 'visit_in_progress':
+            messages.error(request, "Action Denied: This site is locked. You cannot delete photos during or after QA review.")
+            return redirect(f'/upload-photos/?site_id={site_id}')
+            
         photo.delete()
         messages.success(request, "Photo successfully removed from the upload queue.")
         return redirect(f'/upload-photos/?site_id={site_id}')
@@ -1149,6 +1157,13 @@ def report_chat(request):
             else:
                 pdf_text = "[No PDF attached to this report yet.]"
 
+            # 🚀 FIX 2: Inject Manual QA Issues into the AI's Brain
+            manual_issues = report.site.issues.all()
+            if manual_issues.exists():
+                issues_block = "\n".join([f"- [{i.severity}] {i.description} (Resolved: {i.is_resolved})" for i in manual_issues])
+            else:
+                issues_block = "No manual issues logged by the QA team."
+
             db_context = f"""
             Site ID: {report.site.site_id}
             Site Name: {report.site.site_name}
@@ -1170,6 +1185,10 @@ def report_chat(request):
             
             Damage Breakdown:
             {report.category_damage_breakdown}
+            
+            --- MANUAL QA ISSUES LOGGED ---
+            {issues_block}
+            -------------------------------
             
             Predictive Risk Outlook:
             {report.predictive_risk_outlook}
