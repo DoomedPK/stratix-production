@@ -453,16 +453,24 @@ def upload_photos(request):
 
     # 🚀 FIX: Calculate dynamic photo counts for the contractor's checklist
     current_counts = {}
+    can_finish = True
+    
     if selected_site:
-        for cat in PHOTO_MINIMUMS.keys():
-            current_counts[cat] = SitePhoto.objects.filter(site=selected_site, category=cat).count()
+        for cat, min_count in PHOTO_MINIMUMS.items():
+            count = SitePhoto.objects.filter(site=selected_site, category=cat).count()
+            current_counts[cat] = count
+            if min_count > 0 and count < min_count:
+                can_finish = False
+    else:
+        can_finish = False
 
     return render(request, 'reports/upload_photo.html', {
         'sites': sites, 
         'selected_site': selected_site, 
         'uploaded_photos': uploaded_photos,
         'minimums': PHOTO_MINIMUMS,
-        'current_counts': current_counts # Passed to the template!
+        'current_counts': current_counts,
+        'can_finish': can_finish  # 🚀 Passed to template to lock the button!
     })
 
 # -------------------------------------------------------------------------
