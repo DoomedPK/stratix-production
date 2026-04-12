@@ -208,12 +208,15 @@
             </div>
             {% endfor %}
             
-            <div class="mt-5 mb-3 px-3">
-                <button type="submit" name="action" value="finalize_qa" class="btn btn-primary w-100 py-3 fw-bold fs-5 shadow-lg" style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); border: none;">
+            <div class="d-flex gap-3 mt-5 mb-3 px-3">
+                <button type="submit" name="action" value="return_to_field" class="btn btn-outline-warning fw-bold py-3 px-4 shadow-sm" title="Unlock the site so the contractor can upload completely new photos.">
+                    <i class="fas fa-unlock me-2"></i> Unlock Site for New Uploads
+                </button>
+                <button type="submit" name="action" value="finalize_qa" class="btn btn-primary flex-grow-1 py-3 fw-bold fs-5 shadow-lg" style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); border: none;">
                     <i class="fas fa-paper-plane me-2"></i> Finalize QA & Send to Tech Writer
                 </button>
-                <p class="text-center text-muted small mt-2">Clicking this will immediately push the site to the Technical Writer Hub for report drafting, even if some photos are pending rework.</p>
             </div>
+            <p class="text-center text-muted small mt-2">Click "Finalize QA" to push the site to the Technical Writer Hub. Click "Unlock Site" if the contractor missed categories and needs to upload entirely new photos.</p>
             
         </form>
     {% else %}

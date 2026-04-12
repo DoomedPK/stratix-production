@@ -431,7 +431,6 @@ def upload_photos(request):
     selected_site = get_object_or_404(Site, id=site_id) if site_id else None
 
     if request.method == 'POST' and selected_site:
-        # 🚀 FIX 1: The "Ghost Upload" Security Lock
         report = selected_site.reports.first()
         if report and report.status != 'visit_in_progress':
             messages.error(request, "Action Denied: This site is locked for QA review or is already completed. No new photos can be uploaded.")
@@ -461,7 +460,8 @@ def upload_photos(request):
     
     if selected_site:
         for cat, min_count in PHOTO_MINIMUMS.items():
-            count = SitePhoto.objects.filter(site=selected_site, category=cat).count()
+            # 🚀 FIX: We now explicitly IGNORE REJECTED photos in the count!
+            count = SitePhoto.objects.filter(site=selected_site, category=cat).exclude(status='REJECTED').count()
             current_counts[cat] = count
             if min_count > 0 and count < min_count:
                 can_finish = False
@@ -494,12 +494,13 @@ def finish_upload(request, site_id):
             missing = []
             for cat, min_count in PHOTO_MINIMUMS.items():
                 if min_count > 0:
-                    count = SitePhoto.objects.filter(site=site, category=cat).count()
+                    # 🚀 FIX: Exclude rejected photos on the backend validation too!
+                    count = SitePhoto.objects.filter(site=site, category=cat).exclude(status='REJECTED').count()
                     if count < min_count:
                         missing.append(f"{cat} (needs {min_count - count} more)")
             
             if missing:
-                messages.error(request, "Cannot finish upload! Missing required photos: " + ", ".join(missing))
+                messages.error(request, "Cannot finish upload! Missing valid photos (Rejected photos do not count): " + ", ".join(missing))
                 return redirect(f"{reverse('upload_photos')}?site_id={site.id}")
                 
         report = site.reports.first()
@@ -779,6 +780,21 @@ def qa_review(request, site_id):
                 )
                 messages.success(request, f"Site {site.site_id} successfully sent to the Tech Writer Hub!")
             return redirect('qa_hub')
+            
+        # 🚀 FIX 1: The "Unlock Site" Override Logic
+        elif action == 'return_to_field':
+            report = site.reports.first()
+            if report:
+                report.status = 'visit_in_progress'
+                report.save()
+                ActivityAlert.objects.create(
+                    message=f"QA unlocked site {site.site_id} for additional contractor uploads.", 
+                    user=request.user, 
+                    site=site, 
+                    alert_type='REWORK'
+                )
+                messages.warning(request, f"Site {site.site_id} returned to Field Contractor for new uploads.")
+            return redirect('qa_hub')
 
         if SitePhoto.objects.filter(site=site, status__in=['PENDING', 'REJECTED']).count() == 0 and SitePhoto.objects.filter(site=site).count() > 0:
             report = Report.objects.filter(site=site).first()
@@ -1050,7 +1066,6 @@ def delete_photo(request, photo_id):
         photo = get_object_or_404(SitePhoto, id=photo_id, contractor=request.user)
         site_id = photo.site.id
         
-        # 🚀 FIX 1: The "Ghost Deletion" Security Lock
         report = photo.site.reports.first()
         if report and report.status != 'visit_in_progress':
             messages.error(request, "Action Denied: This site is locked. You cannot delete photos during or after QA review.")
@@ -1157,7 +1172,6 @@ def report_chat(request):
             else:
                 pdf_text = "[No PDF attached to this report yet.]"
 
-            # 🚀 FIX 2: Inject Manual QA Issues into the AI's Brain
             manual_issues = report.site.issues.all()
             if manual_issues.exists():
                 issues_block = "\n".join([f"- [{i.severity}] {i.description} (Resolved: {i.is_resolved})" for i in manual_issues])
