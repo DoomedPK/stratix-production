@@ -46,9 +46,6 @@ PHOTO_MINIMUMS = {
 }
 
 # -------------------------------------------------------------------------
-# 🚀 V2.0 AI HEATMAP ENGINE
-# -------------------------------------------------------------------------
-# -------------------------------------------------------------------------
 # 🚀 V2.0 AI HEATMAP ENGINE (SECURED)
 # -------------------------------------------------------------------------
 def get_site_map_status(site):
@@ -470,7 +467,6 @@ def upload_photos(request):
     
     if selected_site:
         for cat, min_count in PHOTO_MINIMUMS.items():
-            # 🚀 FIX: We now explicitly IGNORE REJECTED photos in the count!
             count = SitePhoto.objects.filter(site=selected_site, category=cat).exclude(status='REJECTED').count()
             current_counts[cat] = count
             if min_count > 0 and count < min_count:
@@ -504,7 +500,6 @@ def finish_upload(request, site_id):
             missing = []
             for cat, min_count in PHOTO_MINIMUMS.items():
                 if min_count > 0:
-                    # 🚀 FIX: Exclude rejected photos on the backend validation too!
                     count = SitePhoto.objects.filter(site=site, category=cat).exclude(status='REJECTED').count()
                     if count < min_count:
                         missing.append(f"{cat} (needs {min_count - count} more)")
@@ -695,6 +690,13 @@ def rework_upload(request, photo_id):
     if not request.user.is_superuser and request.user != photo.contractor:
         return redirect('rework_log')
 
+    # 🚀 FIX: Allow contractors to upload fixes while Tech Writer is drafting.
+    # ONLY block them if the report is fully 'submitted' (delivered to the client).
+    report = photo.site.reports.first()
+    if report and report.status == 'submitted':
+        messages.error(request, "Action Denied: This site report has already been finalized and delivered to the client.")
+        return redirect('rework_log')
+
     if request.method == 'POST':
         new_image = request.FILES.get('replacement_image')
         notes = request.POST.get('contractor_notes', '')
@@ -704,7 +706,7 @@ def rework_upload(request, photo_id):
             photo.contractor_notes = notes
             photo.qa_feedback = f"[Rework Submitted] " + (photo.qa_feedback or "")
             photo.save()
-            ActivityAlert.objects.create(message=f"Contractor uploaded a fix.", user=request.user, site=photo.site, alert_type='UPLOAD')
+            ActivityAlert.objects.create(message=f"Contractor uploaded a fix. Awaiting QA.", user=request.user, site=photo.site, alert_type='UPLOAD')
             return redirect('rework_log')
     return render(request, 'reports/rework_upload.html', {'photo': photo})
 
@@ -730,7 +732,7 @@ def qa_review(request, site_id):
 
     if request.method == 'POST':
         action = request.POST.get('action')
-        # 🚀 NEW: QA God Mode - Override AI Scores
+        
         if action == 'override_scores':
             report = site.reports.first()
             if report:
@@ -750,7 +752,7 @@ def qa_review(request, site_id):
                 messages.success(request, "AI Risk Metrics successfully overridden and Dashboard updated.")
             return redirect('qa_review', site_id=site.id)
         
-        if action == 'save_notes':
+        elif action == 'save_notes':
             qa_notes = request.POST.get('qa_notes', '')
             report = site.reports.first()
             if report:
@@ -797,6 +799,7 @@ def qa_review(request, site_id):
             ActivityAlert.objects.create(message="QA rejected a photo.", user=request.user, site=site, alert_type='REWORK')
 
         elif action == 'finalize_qa':
+            # 🚀 REVERTED: We removed the block. QA can push to Tech Writer ANYTIME so drafting can start in parallel!
             report = Report.objects.filter(site=site).first()
             if report:
                 report.status = 'site_data_submitted'
@@ -810,7 +813,6 @@ def qa_review(request, site_id):
                 messages.success(request, f"Site {site.site_id} successfully sent to the Tech Writer Hub!")
             return redirect('qa_hub')
             
-        # 🚀 FIX 1: The "Unlock Site" Override Logic
         elif action == 'return_to_field':
             report = site.reports.first()
             if report:
