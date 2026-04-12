@@ -309,10 +309,8 @@ def import_sites(request):
             error_count = 0
             
             for row in reader:
-                # Standardize column headers (lowercase, stripped spaces)
                 clean_row = {k.strip().lower(): v.strip() for k, v in row.items() if k}
                 
-                # Required Fields
                 site_id = clean_row.get('site_id')
                 project_name = clean_row.get('project')
                 
@@ -320,12 +318,10 @@ def import_sites(request):
                     error_count += 1
                     continue
                 
-                # Standard Fields
                 site_name = clean_row.get('site_name', 'Unnamed Site')
                 location = clean_row.get('location', '')
                 priority = clean_row.get('priority', 'Medium')
                 
-                # Number parsing
                 lat_val = clean_row.get('latitude')
                 lng_val = clean_row.get('longitude')
                 height_val = clean_row.get('site_height')
@@ -334,7 +330,6 @@ def import_sites(request):
                 longitude = float(lng_val) if lng_val else None
                 height_in_meters = float(height_val) if height_val else None
                 
-                # 🚀 NEW: Client Design Data Fields
                 tower_type = clean_row.get('tower_type', '')
                 ant_count_val = clean_row.get('expected_antenna_count')
                 expected_antenna_count = int(ant_count_val) if ant_count_val and ant_count_val.isdigit() else None
@@ -342,11 +337,9 @@ def import_sites(request):
                 expected_tilt = clean_row.get('expected_tilt', '')
                 sector_layout = clean_row.get('sector_layout', '')
                 
-                # Project & Client association
                 default_client, _ = Client.objects.get_or_create(name="Unassigned Client (Auto-Imported)")
                 project, p_created = Project.objects.get_or_create(name=project_name, defaults={'client': default_client})
                 
-                # Create or Update the Site
                 site, s_created = Site.objects.update_or_create(
                     site_id=site_id,
                     defaults={
@@ -357,7 +350,6 @@ def import_sites(request):
                         'longitude': longitude, 
                         'height_in_meters': height_in_meters,
                         'priority': priority,
-                        # 🚀 Mapping the new design fields
                         'tower_type': tower_type,
                         'expected_antenna_count': expected_antenna_count,
                         'expected_azimuth': expected_azimuth,
@@ -506,7 +498,6 @@ def finish_upload(request, site_id):
                 notes_list = [f"- {p.category}: {p.contractor_notes}" for p in recent_photos if p.contractor_notes]
                 notes_text = "\n".join(notes_list) if notes_list else "No contractor field notes provided."
 
-                # 🚀 NEW: Integrated Client Design Data
                 dynamic_context = f"""
                 --- LIVE DATABASE INPUT DATA ---
                 Location: {site.location}
@@ -709,7 +700,7 @@ def qa_review(request, site_id):
 
     if request.method == 'POST':
         action = request.POST.get('action')
-        # 🚀 NEW ADDITION: Catch the save notes button
+        
         if action == 'save_notes':
             qa_notes = request.POST.get('qa_notes', '')
             report = site.reports.first()
@@ -719,7 +710,7 @@ def qa_review(request, site_id):
                 messages.success(request, "QA Handoff notes saved for the Tech Writer.")
             return redirect('qa_review', site_id=site.id)
         
-        if action == 'bulk_approve':
+        elif action == 'bulk_approve':
             photo_ids = request.POST.getlist('photo_ids')
             if photo_ids:
                 SitePhoto.objects.filter(id__in=photo_ids, site=site).update(status='APPROVED')
@@ -755,6 +746,21 @@ def qa_review(request, site_id):
             photo.qa_feedback = f"[Reworked] {feedback}" if 'Rework' in (photo.qa_feedback or "") else feedback
             photo.save()
             ActivityAlert.objects.create(message="QA rejected a photo.", user=request.user, site=site, alert_type='REWORK')
+
+        # 🚀 NEW: Manual Handoff Logic
+        elif action == 'finalize_qa':
+            report = Report.objects.filter(site=site).first()
+            if report:
+                report.status = 'site_data_submitted'
+                report.save()
+                ActivityAlert.objects.create(
+                    message=f"QA Finalized. Site {site.site_id} is ready for Technical Writing.", 
+                    user=request.user, 
+                    site=site, 
+                    alert_type='UPLOAD'
+                )
+                messages.success(request, f"Site {site.site_id} successfully sent to the Tech Writer Hub!")
+            return redirect('qa_hub')
 
         if SitePhoto.objects.filter(site=site, status__in=['PENDING', 'REJECTED']).count() == 0 and SitePhoto.objects.filter(site=site).count() > 0:
             report = Report.objects.filter(site=site).first()

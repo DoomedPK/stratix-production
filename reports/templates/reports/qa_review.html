@@ -1,6 +1,27 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+    /* 🚀 FIX: FANCYBOX JUMPING & DRAGGING BUG 🚀 */
+    /* This forces the gallery container to perfectly align to the viewport and ignore background scrolling conflicts */
+    .fancybox__container {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 99999 !important;
+    }
+    .fancybox__backdrop {
+        background: rgba(15, 23, 42, 0.95) !important; /* Matches your Stratix dark theme */
+    }
+    .fancybox__slide {
+        padding: 50px !important; /* Ensures the photo never touches the roof of the screen */
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -186,6 +207,14 @@
                 </div>
             </div>
             {% endfor %}
+            
+            <div class="mt-5 mb-3 px-3">
+                <button type="submit" name="action" value="finalize_qa" class="btn btn-primary w-100 py-3 fw-bold fs-5 shadow-lg" style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); border: none;">
+                    <i class="fas fa-paper-plane me-2"></i> Finalize QA & Send to Tech Writer
+                </button>
+                <p class="text-center text-muted small mt-2">Clicking this will immediately push the site to the Technical Writer Hub for report drafting, even if some photos are pending rework.</p>
+            </div>
+            
         </form>
     {% else %}
     <div class="card p-5 text-center shadow-sm">
@@ -208,6 +237,29 @@
                 for (let checkbox of checkboxes) {
                     checkbox.checked = this.checked;
                 }
+            });
+        }
+    });
+
+    // 🚀 FIX: STRICT FANCYBOX OVERRIDE FOR QA HUB 🚀
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof Fancybox !== 'undefined') {
+            // Unbind any global settings from base.html
+            Fancybox.unbind('[data-fancybox="gallery"]');
+            
+            // Re-bind with highly specific rules to prevent the "jumping to roof" dragging bug
+            Fancybox.bind('[data-fancybox="gallery"]', {
+                dragToClose: false,      // Stops the image from freaking out when you try to pan around
+                hideScrollbar: false,    // Neutralizes the conflict with the scrolling background
+                autoFocus: false,        // Prevents the screen from jumping
+                placeFocusBack: false,
+                Toolbar: {
+                    display: {
+                        left: ["infobar"],
+                        middle: ["zoomIn", "zoomOut", "toggle1to1", "rotateCCW", "rotateCW", "flipX", "flipY"],
+                        right: ["slideshow", "thumbs", "close"],
+                    },
+                },
             });
         }
     });
