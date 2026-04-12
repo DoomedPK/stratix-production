@@ -854,12 +854,26 @@ def approve_report(request, report_id):
         
     report = get_object_or_404(Report, id=report_id)
     
-    # 🚀 FIX: The Final Delivery Gatekeeper
-    # Ensure ALL photos for this site are completely resolved and approved before client delivery
-    unresolved_photos = SitePhoto.objects.filter(site=report.site).exclude(status='APPROVED').count()
-    if unresolved_photos > 0:
-        messages.error(request, f"Action Denied! Cannot deliver report to client. There are {unresolved_photos} photos still Pending or Rejected. The contractor must fix these and QA must approve them before final delivery.")
+    # 🚀 THE FINAL FIX: The Bulletproof Delivery Gatekeeper
+    # 1. Block if there are any unreviewed photos
+    pending_photos = SitePhoto.objects.filter(site=report.site, status='PENDING').count()
+    if pending_photos > 0:
+        messages.error(request, f"Action Denied! There are {pending_photos} unreviewed photos. QA must approve or reject them first.")
         return redirect('qa_hub')
+
+    # 2. Block if the site mathematically lacks the required APPROVED photos
+    if report.site.project.require_photo_minimums:
+        missing = []
+        for cat, min_count in PHOTO_MINIMUMS.items():
+            if min_count > 0:
+                # We specifically count ONLY mathematically Approved photos!
+                approved_count = SitePhoto.objects.filter(site=report.site, category=cat, status='APPROVED').count()
+                if approved_count < min_count:
+                    missing.append(f"{cat} (needs {min_count - approved_count} more)")
+        
+        if missing:
+            messages.error(request, "Action Denied! Cannot deliver report. Missing APPROVED photos for: " + ", ".join(missing))
+            return redirect('qa_hub')
 
     if request.method == 'POST':
         report.status = 'submitted'
