@@ -208,7 +208,15 @@
                             <textarea class="form-control bg-dark text-light border-secondary" id="comments" name="comments" rows="3" placeholder="Optional notes...">{{ report.comments|default:"" }}</textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100 fw-bold py-3 fs-5"><i class="fas fa-paper-plane me-2"></i> Submit Final Draft</button>
+                        <div class="d-flex gap-3 mt-4">
+                            <button type="submit" name="action" value="return_to_qa" class="btn btn-outline-danger fw-bold py-3 px-4 shadow-sm" title="Kick this site back to QA if photos are missing or data is wrong.">
+                                <i class="fas fa-undo-alt me-2"></i> Return to QA
+                            </button>
+                            <button type="submit" name="action" value="submit_draft" class="btn btn-primary flex-grow-1 fw-bold py-3 fs-5 shadow-lg">
+                                <i class="fas fa-paper-plane me-2"></i> Submit Final Draft to QA
+                            </button>
+                        </div>
+
                     </form>
                 </div>
             </div>

@@ -63,7 +63,33 @@
             </div>
 
             {% if selected_site %}
-            <div class="card p-4 shadow-sm border-success-left">
+            
+            <div class="card p-4 shadow-sm border-info-left mb-4 bg-dark text-light border-secondary">
+                <h5 class="fw-bold border-bottom border-secondary pb-2 mb-3 text-info">
+                    <i class="fas fa-list-check me-2"></i> Required Capture Checklist
+                </h5>
+                <p class="text-muted small mb-3">Ensure all structural minimums are met before finalizing. The system will block incomplete submissions.</p>
+                <ul class="list-group list-group-flush mb-0">
+                    {% for category, min_required in minimums.items %}
+                        {% if min_required > 0 %}
+                            {% for key, value in current_counts.items %}
+                                {% if key == category %}
+                                    <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center px-1">
+                                        {{ category }}
+                                        {% if value >= min_required %}
+                                            <span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check me-1"></i> {{ value }} / {{ min_required }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fas fa-camera me-1"></i> {{ value }} / {{ min_required }}</span>
+                                        {% endif %}
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card p-4 shadow-sm border-success-left mb-4">
                 <div class="border-bottom border-secondary pb-3 mb-4">
                     <h5 class="fw-bold mb-0 text-white"><i class="fas fa-images me-2 text-success"></i> Upload Preview</h5>
                 </div>
@@ -93,17 +119,16 @@
                 {% endif %}
 
                 <div class="border-top border-secondary pt-4 mt-2">
-                    <form method="POST" action="{% url 'finish_upload' selected_site.id %}" class="w-100">
+                    <form method="POST" action="{% url 'finish_upload' selected_site.id %}" id="finishUploadForm" class="w-100">
                         {% csrf_token %}
                         <div class="mb-4">
                             <label for="drone_3d_link" class="form-label text-info fw-bold small"><i class="fas fa-cube me-1"></i> Drone 3D Model Link (Optional)</label>
                             <input type="url" class="form-control bg-dark text-light border-secondary" id="drone_3d_link" name="drone_3d_link" placeholder="Paste DroneDeploy, Pix4D, or Sketchfab share link here...">
                             <div class="form-text text-muted" style="font-size: 0.75rem;">If a 3D photogrammetry scan was completed, paste the public share link to embed it for the client.</div>
                         </div>
-                        <button type="submit" class="btn btn-success fw-bold w-100 py-2 fs-5"><i class="fas fa-check-double me-2"></i> Finish Uploads & Analyze</button>
+                        <button type="submit" class="btn btn-success fw-bold w-100 py-2 fs-5 shadow-lg"><i class="fas fa-check-double me-2"></i> Finish Uploads & Analyze</button>
                     </form>
                 </div>
-
             </div>
             {% endif %}
 

@@ -451,11 +451,18 @@ def upload_photos(request):
 
     uploaded_photos = SitePhoto.objects.filter(site=selected_site, contractor=user).order_by('-uploaded_at') if selected_site else None
 
+    # 🚀 FIX: Calculate dynamic photo counts for the contractor's checklist
+    current_counts = {}
+    if selected_site:
+        for cat in PHOTO_MINIMUMS.keys():
+            current_counts[cat] = SitePhoto.objects.filter(site=selected_site, category=cat).count()
+
     return render(request, 'reports/upload_photo.html', {
         'sites': sites, 
         'selected_site': selected_site, 
         'uploaded_photos': uploaded_photos,
-        'minimums': PHOTO_MINIMUMS
+        'minimums': PHOTO_MINIMUMS,
+        'current_counts': current_counts # Passed to the template!
     })
 
 # -------------------------------------------------------------------------
@@ -824,9 +831,20 @@ def draft_report(request, report_id):
     approved_photos = SitePhoto.objects.filter(site=report.site, status='APPROVED').order_by('category')
 
     if request.method == 'POST':
-        final_pdf = request.FILES.get('final_document')
+        action = request.POST.get('action', 'submit_draft')
         comments = request.POST.get('comments', '')
         
+        # 🚀 FIX: Logic to handle returning the report back to QA
+        if action == 'return_to_qa':
+            report.status = 'qa_validation'
+            report.comments = f"[RETURNED BY TECH WRITER]: {comments} | Previous Notes: {report.comments}"
+            report.save()
+            ActivityAlert.objects.create(message="Tech Writer kicked report back to QA for review.", user=request.user, site=report.site, alert_type='REWORK')
+            messages.warning(request, "Report has been returned to the QA Hub.")
+            return redirect('tech_writer_hub')
+
+        # Standard Submit Draft Logic
+        final_pdf = request.FILES.get('final_document')
         report.client_executive_summary = request.POST.get('client_executive_summary', report.client_executive_summary)
         report.category_damage_breakdown = request.POST.get('category_damage_breakdown', report.category_damage_breakdown)
         report.historical_trend_analysis = request.POST.get('historical_trend_analysis', report.historical_trend_analysis)
