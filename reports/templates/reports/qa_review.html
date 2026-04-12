@@ -32,7 +32,12 @@
     {% with report=site.reports.first %}
     
     {% if report.structural_risk_score %}
-    <div class="card p-4 shadow-lg mb-4" style="background: rgba(30, 20, 10, 0.8); border-left: 4px solid #f59e0b;">
+    <div class="card p-4 shadow-lg mb-4 position-relative" style="background: rgba(30, 20, 10, 0.8); border-left: 4px solid #f59e0b;">
+        
+        <button type="button" class="btn btn-sm btn-outline-warning position-absolute top-0 end-0 mt-3 me-3" data-bs-toggle="modal" data-bs-target="#overrideScoresModal">
+            <i class="fas fa-sliders-h me-1"></i> Override AI
+        </button>
+
         <h5 class="fw-bold text-warning border-bottom border-warning border-opacity-25 pb-2 mb-3">
             <i class="fas fa-robot me-2"></i> Stratix AI Risk Assessment
         </h5>
@@ -51,7 +56,7 @@
             </div>
             <div class="col-6 col-md-3">
                 <p class="mb-1 text-warning small fw-bold text-uppercase tracking-wide">Urgency Level</p>
-                <span class="badge py-2 px-3 {% if report.urgency_flag == 'High' %}bg-danger{% elif report.urgency_flag == 'Medium' %}bg-warning text-dark{% else %}bg-success{% endif %} fs-6 shadow-sm">
+                <span class="badge py-2 px-3 {% if report.urgency_flag == 'High' or report.urgency_flag == 'Critical' %}bg-danger{% elif report.urgency_flag == 'Medium' %}bg-warning text-dark{% else %}bg-success{% endif %} fs-6 shadow-sm">
                     {{ report.urgency_flag }}
                 </span>
             </div>
@@ -69,6 +74,50 @@
             <div class="col-md-6 border-start border-secondary">
                 <p class="mb-1 text-warning small fw-bold text-uppercase tracking-wide">Category Damage Breakdown:</p>
                 <p class="mb-0 text-light small">{{ report.category_damage_breakdown|default:"No breakdown generated." }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="overrideScoresModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-warning shadow-lg text-light">
+                <div class="modal-header border-secondary border-opacity-25">
+                    <h5 class="modal-title fw-bold text-warning"><i class="fas fa-sliders-h me-2"></i> Override AI Risk Metrics</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <p class="text-muted small mb-4">Use this to correct AI hallucinations. Changing these scores will immediately update the Executive Dashboard Heatmap.</p>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-light small">Structural Risk (1-10)</label>
+                                <input type="number" name="structural_risk" class="form-control bg-dark text-light border-secondary" min="1" max="10" value="{{ report.structural_risk_score }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-light small">Hardware Damage (1-10)</label>
+                                <input type="number" name="equipment_damage" class="form-control bg-dark text-light border-secondary" min="1" max="10" value="{{ report.equipment_damage_score }}" required>
+                            </div>
+                            <div class="col-md-12 mt-3">
+                                <label class="form-label fw-bold text-light small">Urgency Level</label>
+                                <select name="urgency_flag" class="form-select bg-dark text-light border-secondary">
+                                    <option value="Critical" {% if report.urgency_flag == 'Critical' %}selected{% endif %}>Critical</option>
+                                    <option value="High" {% if report.urgency_flag == 'High' %}selected{% endif %}>High</option>
+                                    <option value="Medium" {% if report.urgency_flag == 'Medium' %}selected{% endif %}>Medium</option>
+                                    <option value="Low" {% if report.urgency_flag == 'Low' %}selected{% endif %}>Low</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12 mt-3">
+                                <label class="form-label fw-bold text-light small">AI Repair Timeline</label>
+                                <input type="text" name="ai_repair_timeline" class="form-control bg-dark text-light border-secondary" value="{{ report.ai_repair_timeline }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary border-opacity-25">
+                        <button type="submit" name="action" value="override_scores" class="btn btn-warning fw-bold w-100 text-dark">Save Overrides</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

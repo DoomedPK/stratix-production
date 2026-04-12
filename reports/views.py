@@ -720,6 +720,25 @@ def qa_review(request, site_id):
 
     if request.method == 'POST':
         action = request.POST.get('action')
+        # 🚀 NEW: QA God Mode - Override AI Scores
+        if action == 'override_scores':
+            report = site.reports.first()
+            if report:
+                try:
+                    report.structural_risk_score = int(request.POST.get('structural_risk', report.structural_risk_score or 0))
+                    report.equipment_damage_score = int(request.POST.get('equipment_damage', report.equipment_damage_score or 0))
+                except ValueError:
+                    pass
+                report.urgency_flag = request.POST.get('urgency_flag', report.urgency_flag)
+                report.ai_repair_timeline = request.POST.get('ai_repair_timeline', report.ai_repair_timeline)
+                report.save()
+                
+                ActivityAlert.objects.create(
+                    message=f"QA Engineer overrode the AI Risk Scores for {site.site_id}.", 
+                    user=request.user, site=site, alert_type='REWORK'
+                )
+                messages.success(request, "AI Risk Metrics successfully overridden and Dashboard updated.")
+            return redirect('qa_review', site_id=site.id)
         
         if action == 'save_notes':
             qa_notes = request.POST.get('qa_notes', '')
