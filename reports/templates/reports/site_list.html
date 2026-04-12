@@ -72,15 +72,19 @@
                                 <span class="badge bg-warning text-dark"><i class="fas fa-hard-hat me-1"></i> Contractor On Site</span>
                             {% elif report.status == 'qa_validation' %}
                                 <span class="badge bg-primary"><i class="fas fa-search me-1"></i> QA Validation</span>
+                            {% elif report.status == 'site_data_submitted' %}
+                                <span class="badge bg-info text-dark"><i class="fas fa-pen-nib me-1"></i> Tech Drafting</span>
+                            {% elif report.status == 'engineer_review' %}
+                                <span class="badge text-light" style="background-color: #8b5cf6;"><i class="fas fa-clipboard-check me-1"></i> QA Final Review</span>
                             {% elif report.status == 'submitted' %}
-                                <span class="badge bg-success"><i class="fas fa-check-double me-1"></i> Completed & Delivered</span>
+                                <span class="badge bg-success"><i class="fas fa-check-double me-1"></i> Delivered</span>
                             {% else %}
-                                <span class="badge bg-info"><i class="fas fa-spinner fa-spin me-1"></i> Drafting Report</span>
+                                <span class="badge bg-secondary">Unknown</span>
                             {% endif %}
                         </td>
                         <td class="pe-4 text-end text-nowrap">
                             {% if user.is_superuser or user.profile.role == 'QA' or user.profile.role == 'Admin' %}
-                                <button type="button" class="btn btn-sm btn-outline-danger text-light" data-bs-toggle="modal" data-bs-target="#issueModal-{{ report.site.id }}" title="Report Site Issue"><i class="fas fa-exclamation-triangle"></i></button>
+                                <button type="button" class="btn btn-sm btn-outline-danger text-light" data-bs-toggle="modal" data-bs-target="#issueModal-{{ report.id }}" title="Report Site Issue"><i class="fas fa-exclamation-triangle"></i></button>
                             {% endif %}
                             
                             {% if user.profile.role == 'Client' %}
@@ -126,7 +130,7 @@
 {% if reports %}
     {% for report in reports %}
         {% if user.is_superuser or user.profile.role == 'QA' or user.profile.role == 'Admin' %}
-        <div class="modal fade text-start" id="issueModal-{{ report.site.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal fade text-start" id="issueModal-{{ report.id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content bg-dark border-secondary">
                     <div class="modal-header border-secondary">

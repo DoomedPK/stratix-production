@@ -48,17 +48,27 @@ PHOTO_MINIMUMS = {
 # -------------------------------------------------------------------------
 # 🚀 V2.0 AI HEATMAP ENGINE
 # -------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# 🚀 V2.0 AI HEATMAP ENGINE (SECURED)
+# -------------------------------------------------------------------------
 def get_site_map_status(site):
+    """Calculates map colors. STRICTLY prevents unverified AI data from showing to clients."""
     report = site.reports.first()
     
+    # 🚀 FIX: If QA hasn't validated the site yet, force the map to show 'Pending'.
+    # This prevents AI hallucinations from triggering false alarms on the Client Dashboard!
+    if not report or report.status in ['not_visited', 'visit_in_progress', 'qa_validation']:
+        return 'Pending / In Progress', '#3b82f6' 
+    
+    # Only show AI scores if it has passed QA (site_data_submitted, engineer_review, submitted)
     if report and report.structural_risk_score:
         score = report.structural_risk_score
         if score >= 8:
-            return f'AI Critical Risk ({score}/10)', '#ef4444' 
+            return f'Critical Risk ({score}/10)', '#ef4444' 
         elif score >= 5:
-            return f'AI Moderate Risk ({score}/10)', '#f59e0b' 
+            return f'Moderate Risk ({score}/10)', '#f59e0b' 
         else:
-            return f'AI Low Risk ({score}/10)', '#10b981' 
+            return f'Low Risk ({score}/10)', '#10b981' 
 
     issues = site.issues.filter(is_resolved=False)
     if issues.filter(severity='Critical').exists():
