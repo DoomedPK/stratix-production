@@ -70,7 +70,11 @@
                                         <button class="btn btn-outline-secondary w-100 fw-bold mb-2" disabled>Report Unavailable</button>
                                     {% endif %}
                                     
-                                    <button class="btn w-100 fw-bold text-dark" style="background: linear-gradient(135deg, #38bdf8, #818cf8);" onclick="openChatModal('{{ report.id }}', '{{ report.site.site_id }}')">
+                                    <a href="{% url 'download_site_photos_zip' report.site.id %}" class="btn btn-outline-info w-100 fw-bold mb-2 shadow-sm">
+                                        <i class="fas fa-file-archive me-2"></i> Download Source Photos (ZIP)
+                                    </a>
+                                    
+                                    <button class="btn w-100 fw-bold text-dark mt-2" style="background: linear-gradient(135deg, #38bdf8, #818cf8);" onclick="openChatModal('{{ report.id }}', '{{ report.site.site_id }}')">
                                         <i class="fas fa-robot me-2"></i> Chat with Stratix AI
                                     </button>
                                 </div>
@@ -214,8 +218,6 @@ function handleKeyPress(e) {
 function appendMessage(text, isUser) {
     const chatHistory = document.getElementById('chatHistory');
     const msgDiv = document.createElement('div');
-    
-    // Use marked library if you want markdown, else just raw text. For now, raw text is perfectly fine.
     
     if (isUser) {
         msgDiv.className = 'd-flex align-items-end flex-column mb-3';

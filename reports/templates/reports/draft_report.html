@@ -224,7 +224,12 @@
 
         <div class="col-lg-6">
             <div class="card p-4 shadow-sm border-success-left h-100">
-                <h5 class="fw-bold border-bottom border-secondary pb-2 mb-4 text-success"><i class="fas fa-images me-2"></i> QA Approved Source Photos</h5>
+                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-4">
+                    <h5 class="fw-bold text-success mb-0"><i class="fas fa-images me-2"></i> QA Approved Source Photos</h5>
+                    <a href="{% url 'download_site_photos_zip' report.site.id %}" class="btn btn-sm btn-info fw-bold text-dark shadow-sm">
+                        <i class="fas fa-download me-1"></i> Download ZIP
+                    </a>
+                </div>
                 
                 {% if photos %}
                 <div class="row g-3 overflow-auto" style="max-height: 800px; padding-right: 10px;">

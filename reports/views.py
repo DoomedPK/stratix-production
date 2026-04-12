@@ -716,7 +716,13 @@ def qa_hub(request):
     if not (user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['Admin', 'QA'])):
         return redirect('dashboard_home')
         
-    sites_needing_review = Site.objects.filter(photos__status='PENDING').distinct()
+    # 🚀 FIX: The "Ghost Limbo" Bug
+    # We now fetch sites that have PENDING photos OR have a report stuck in 'qa_validation'
+    # This ensures a site never disappears if QA forgets to click "Finalize QA"
+    sites_needing_review = Site.objects.filter(
+        Q(photos__status='PENDING') | Q(reports__status='qa_validation')
+    ).distinct()
+    
     drafted_reports = Report.objects.filter(status='engineer_review')
     
     return render(request, 'reports/qa_hub.html', {'sites': sites_needing_review, 'drafted_reports': drafted_reports})
@@ -846,11 +852,20 @@ def approve_report(request, report_id):
         return redirect('dashboard_home')
         
     report = get_object_or_404(Report, id=report_id)
+    
+    # 🚀 FIX: The Final Delivery Gatekeeper
+    # Ensure ALL photos for this site are completely resolved and approved before client delivery
+    unresolved_photos = SitePhoto.objects.filter(site=report.site).exclude(status='APPROVED').count()
+    if unresolved_photos > 0:
+        messages.error(request, f"Action Denied! Cannot deliver report to client. There are {unresolved_photos} photos still Pending or Rejected. The contractor must fix these and QA must approve them before final delivery.")
+        return redirect('qa_hub')
+
     if request.method == 'POST':
         report.status = 'submitted'
         report.save()
         ActivityAlert.objects.create(message="Final Technical Report Approved and Sent to Client.", user=request.user, site=report.site, alert_type='UPLOAD')
         messages.success(request, "Report Approved and Delivered!")
+        
     return redirect('qa_hub')
 
 @login_required
@@ -1335,24 +1350,39 @@ def mark_tutorial_seen(request):
 
 @login_required
 def download_site_photos_zip(request, site_id):
-    if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['Admin', 'QA', 'Tech Writer'])):
+    # 🚀 FIX: Added 'Client' to the approved roles
+    if not (request.user.is_superuser or (hasattr(request.user, 'profile') and request.user.profile.role in ['Admin', 'QA', 'Tech Writer', 'Client'])):
         return redirect('dashboard_home')
         
     site = get_object_or_404(Site, id=site_id)
-    photos = SitePhoto.objects.filter(site=site)
+    
+    # 🚀 FIX: Security Check to ensure Clients can only download THEIR OWN site photos
+    if hasattr(request.user, 'profile') and request.user.profile.role == 'Client':
+        if site.project.client != request.user.profile.client:
+            messages.error(request, "Unauthorized access to site data.")
+            return redirect('dashboard_home')
+    
+    # Only download APPROVED photos!
+    photos = SitePhoto.objects.filter(site=site, status='APPROVED')
+    
+    if not photos.exists():
+        messages.warning(request, "There are no approved photos available to download for this site yet.")
+        referer = request.META.get('HTTP_REFERER')
+        return redirect(referer if referer else 'dashboard_home')
     
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for photo in photos:
             if photo.image:
                 try:
-                    file_name = f"{photo.category.replace(' ', '_')}_{os.path.basename(photo.image.name)}"
+                    clean_category = photo.category.replace(' ', '_').replace('/', '-')
+                    file_name = f"{clean_category}_{os.path.basename(photo.image.name)}"
                     zip_file.writestr(file_name, photo.image.read())
                 except Exception as e:
                     print(f"Error zipping photo {photo.id}: {e}")
 
     response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
-    response['Content-Disposition'] = f'attachment; filename="{site.site_id}_Drone_Capture.zip"'
+    response['Content-Disposition'] = f'attachment; filename="{site.site_id}_Approved_Photos.zip"'
     return response
 
 @login_required
