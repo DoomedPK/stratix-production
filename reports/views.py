@@ -141,17 +141,18 @@ def dashboard_home(request):
         
     pending_report_validation = reports.filter(status='engineer_review').count()
 
+    # 🚀 FIX: Chronologically ordered the Dashboard Pipeline Analytics
     chart_data = [
         reports.filter(status='not_visited').count(),
         reports.filter(status='visit_in_progress').count(),
-        reports.filter(status='site_data_submitted').count(),
-        reports.filter(status='qa_validation').count(),
-        reports.filter(status='engineer_review').count(),
-        reports.filter(status='submitted').count(),
+        reports.filter(status='qa_validation').count(),        # Step 3: QA Review
+        reports.filter(status='site_data_submitted').count(),  # Step 4: Tech Drafting
+        reports.filter(status='engineer_review').count(),      # Step 5: QA Final Sign-off
+        reports.filter(status='submitted').count(),            # Step 6: Delivered
     ]
 
-    status_labels = ['Not Visited', 'Visit In Progress', 'Site Data Submitted', 'QA Validation', 'Report in Progress', 'Completed/Delivered']
-    status_colors = ['#64748b', '#f59e0b', '#0ea5e9', '#f97316', '#8b5cf6', '#10b981']
+    status_labels = ['Not Visited', 'Visit In Progress', 'QA Validation', 'Tech Drafting', 'QA Final Review', 'Delivered']
+    status_colors = ['#64748b', '#f59e0b', '#0ea5e9', '#8b5cf6', '#f97316', '#10b981']
     status_data = [{'count': chart_data[i], 'label': status_labels[i], 'color': status_colors[i]} for i in range(6)]
 
     status_board = [

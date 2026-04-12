@@ -102,7 +102,10 @@
                                 {% elif report.status == 'visit_in_progress' %}
                                     <a href="{% url 'upload_photos' %}?site_id={{ report.site.id }}" class="btn btn-sm btn-outline-info fw-semibold ms-1"><i class="fas fa-camera me-1"></i> Upload Photos</a>
                                 {% else %}
-                                    <span class="badge bg-secondary px-3 py-2 ms-1"><i class="fas fa-lock me-1"></i> Locked for QA/Drafting</span>
+                                    <a href="{% url 'rework_log' %}" class="btn btn-sm btn-outline-danger fw-bold ms-1" title="Check your Rework Log">
+                                        <i class="fas fa-exclamation-circle me-1"></i> Check Reworks
+                                    </a>
+                                    <span class="badge bg-secondary px-3 py-2 ms-1"><i class="fas fa-lock me-1"></i> Locked</span>
                                 {% endif %}
                             {% else %}
                                 {% if report.status == 'submitted' and report.final_document %}
