@@ -261,7 +261,9 @@ def dashboard_home(request):
             'common_errors': common_errors
         })
 
-    predictive_reports = reports.exclude(predictive_risk_outlook__isnull=True).exclude(predictive_risk_outlook='').order_by('-submitted_at')[:5]
+    # 🚀 FIX: The Predictive Watchlist Gatekeeper
+    # Only show predictive insights for reports that have been fully QA'd and delivered to the client!
+    predictive_reports = reports.filter(status='submitted').exclude(predictive_risk_outlook__isnull=True).exclude(predictive_risk_outlook='').order_by('-submitted_at')[:5]
 
     context = {
         'user': user,
