@@ -1090,7 +1090,7 @@ Please log into the Stratix Command Center admin panel to view and resolve this 
                 message=email_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=['clientrelations@stratixjm.com'],
-                fail_silently=True,
+                fail_silently=False,
             )
         except Exception as e:
             print(f"SMTP Error: Could not send email. {str(e)}")
