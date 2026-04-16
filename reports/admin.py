@@ -13,6 +13,21 @@ class ProjectAdmin(admin.ModelAdmin):
     list_filter = ('project_type', 'status', 'client')
     search_fields = ('name',)
 
+    fieldsets = (
+        ('Project Info', {
+            'fields': ('name', 'client', 'start_date', 'end_date', 'status', 'project_type', 'require_photo_minimums')
+        }),
+        ('Custom Photo Minimum Requirements', {
+            'fields': (
+                'min_site_overview', 'min_access_road', 'min_tower_structure', 
+                'min_tower_base', 'min_antennas', 'min_cabling', 
+                'min_equipment_shelter', 'min_power_systems', 'min_grounding', 
+                'min_perimeter', 'min_additional'
+            ),
+            'description': "Adjust the required photo count for this specific project. (Only applies if 'Require photo minimums' is checked)."
+        }),
+    )
+
 @admin.register(Site)
 class SiteAdmin(admin.ModelAdmin):
     # 🚀 NEW: Added tower_type to the list display so Admins can see the design data at a glance

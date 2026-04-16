@@ -31,7 +31,7 @@ from django.core.files.base import ContentFile
 load_dotenv()
 
 # --- CATEGORY MINIMUMS ---
-PHOTO_MINIMUMS = {
+DEFAULT_PHOTO_MINIMUMS = {
     'Site Overview': 4,
     'Access Road': 2,
     'Tower Structure': 5,
@@ -465,11 +465,20 @@ def upload_photos(request):
 
     uploaded_photos = SitePhoto.objects.filter(site=selected_site, contractor=user).order_by('-uploaded_at') if selected_site else None
 
+    # 🚀 DYNAMIC MINIMUMS: Pull from the specific project!
+    current_minimums = DEFAULT_PHOTO_MINIMUMS
+    if selected_site:
+        if selected_site.project.require_photo_minimums:
+            current_minimums = selected_site.project.get_photo_minimums()
+        else:
+            # If the box is unchecked, require 0 for everything, but keep the categories in the dropdown
+            current_minimums = {cat: 0 for cat in DEFAULT_PHOTO_MINIMUMS.keys()}
+
     current_counts = {}
     can_finish = True
     
     if selected_site:
-        for cat, min_count in PHOTO_MINIMUMS.items():
+        for cat, min_count in current_minimums.items():
             count = SitePhoto.objects.filter(site=selected_site, category=cat).exclude(status='REJECTED').count()
             current_counts[cat] = count
             if min_count > 0 and count < min_count:
@@ -481,7 +490,7 @@ def upload_photos(request):
         'sites': sites, 
         'selected_site': selected_site, 
         'uploaded_photos': uploaded_photos,
-        'minimums': PHOTO_MINIMUMS,
+        'minimums': current_minimums,  # <-- Pass the dynamic minimums to the template!
         'current_counts': current_counts,
         'can_finish': can_finish
     })
@@ -499,9 +508,11 @@ def finish_upload(request, site_id):
             report.drone_3d_model_link = request.POST.get('drone_3d_link')
             report.save()
         
+        # 🚀 DYNAMIC MINIMUMS: Validate against the project-specific rules
         if site.project.require_photo_minimums:
             missing = []
-            for cat, min_count in PHOTO_MINIMUMS.items():
+            current_minimums = site.project.get_photo_minimums()
+            for cat, min_count in current_minimums.items():
                 if min_count > 0:
                     count = SitePhoto.objects.filter(site=site, category=cat).exclude(status='REJECTED').count()
                     if count < min_count:

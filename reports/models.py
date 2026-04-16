@@ -29,6 +29,35 @@ class Project(models.Model):
     project_type = models.CharField(max_length=50, choices=PROJECT_TYPE_CHOICES, default='General')
     require_photo_minimums = models.BooleanField(default=False, help_text="Enforce minimum photo counts per category for contractors.")
 
+    # 🚀 NEW: Dynamic Photo Minimums (Defaults set to your standard rules)
+    min_site_overview = models.IntegerField(default=4, verbose_name="Min Site Overview")
+    min_access_road = models.IntegerField(default=2, verbose_name="Min Access Road")
+    min_tower_structure = models.IntegerField(default=5, verbose_name="Min Tower Structure")
+    min_tower_base = models.IntegerField(default=14, verbose_name="Min Tower Base & Foundation")
+    min_antennas = models.IntegerField(default=9, verbose_name="Min Antennas & Mounting")
+    min_cabling = models.IntegerField(default=3, verbose_name="Min Cabling & Connections")
+    min_equipment_shelter = models.IntegerField(default=2, verbose_name="Min Equipment Shelter")
+    min_power_systems = models.IntegerField(default=2, verbose_name="Min Power Systems")
+    min_grounding = models.IntegerField(default=2, verbose_name="Min Grounding")
+    min_perimeter = models.IntegerField(default=5, verbose_name="Min Perimeter & Security")
+    min_additional = models.IntegerField(default=0, verbose_name="Min Additional Observations")
+
+    def get_photo_minimums(self):
+        """Returns a dictionary of this specific project's minimums."""
+        return {
+            'Site Overview': self.min_site_overview,
+            'Access Road': self.min_access_road,
+            'Tower Structure': self.min_tower_structure,
+            'Tower Base & Foundation': self.min_tower_base,
+            'Antennas & Mounting Systems': self.min_antennas,
+            'Cabling & Connections': self.min_cabling,
+            'Equipment Shelter / Cabinets': self.min_equipment_shelter,
+            'Power Systems': self.min_power_systems,
+            'Grounding & Earthing': self.min_grounding,
+            'Perimeter, Security & Surroundings': self.min_perimeter,
+            'Additional Observations': self.min_additional,
+        }
+
     def __str__(self):
         return f"{self.name} ({self.project_type})"
 
