@@ -5,25 +5,26 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 🚀 SECURITY WARNING: In production, DEBUG will automatically be False if an ENV variable is set.
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-stratix-default-key-123')
 
-# 🚀 Dynamic Allowed Hosts for AWS/GCP/Render
 ALLOWED_HOSTS = ['*']
 
-# 🚀 UPDATED: Production URLs for CSRF Protection
 CSRF_TRUSTED_ORIGINS = [
     'https://stratix-dashboard.azurewebsites.net',
-    'https://stratixjm-dashboard.onrender.com',
+    'https://portal.stratixjm.com',
 ]
 
-# If a custom production URL is set in the environment variables, format it and add it
-prod_url = config('PRODUCTION_URL', default='')
+# --- DYNAMIC URL CONFIGURATION ---
+prod_url = config('PRODUCTION_URL', default='portal.stratixjm.com')
 if prod_url:
     if not prod_url.startswith('http'):
-        prod_url = f'https://{prod_url}'
-    CSRF_TRUSTED_ORIGINS.append(prod_url)
+        CSRF_TRUSTED_ORIGINS.append(f'https://{prod_url}')
+    else:
+        CSRF_TRUSTED_ORIGINS.append(prod_url)
+
+# This variable is now available for your email logic
+PRODUCTION_URL = prod_url.replace('https://', '').replace('http://', '')
 
 INSTALLED_APPS = [
     'jazzmin', 
@@ -77,7 +78,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 ASGI_APPLICATION = 'core.asgi.application'
 
-# 🚀 POSTGRESQL / SUPABASE DATABASE CONFIGURATION
 DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL', default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3')),
@@ -98,7 +98,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# 🚀 STATIC FILES (Whitenoise)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
@@ -126,9 +125,6 @@ else:
         'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
     }
 
-# ----------------------------------------------------------------------
-# 🚀 DJANGO 5.1 STORAGE CONFIGURATION (MICROSOFT AZURE)
-# ----------------------------------------------------------------------
 AZURE_ACCOUNT_NAME = config('AZURE_ACCOUNT_NAME', default='')
 AZURE_ACCOUNT_KEY = config('AZURE_ACCOUNT_KEY', default='')
 AZURE_CONTAINER = config('AZURE_CONTAINER', default='site-photos')
@@ -159,10 +155,7 @@ else:
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
-    
-# ----------------------------------------------------------------------
-# EMAIL SMTP CONFIGURATION
-# ----------------------------------------------------------------------
+
 EMAIL_BACKEND = 'reports.email_backend.HighPriorityEmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int) 
@@ -172,9 +165,6 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='clientrelations@stratixjm.c
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# ----------------------------------------------------------------------
-# JAZZMIN ADMIN UI CONFIGURATION
-# ----------------------------------------------------------------------
 JAZZMIN_SETTINGS = {
     "site_title": "Stratix Admin",
     "site_header": "Stratix Command",
@@ -183,11 +173,9 @@ JAZZMIN_SETTINGS = {
     "login_logo": "images/stratix-logo.png",
     "site_logo_classes": "img-circle",
     "site_icon": "images/stratix-logo.png",
-    
     "welcome_sign": "Secure Command Center Authentication",
     "copyright": "Stratix Group Limited",
     "search_model": ["reports.Site", "auth.User", "reports.SupportTicket"],
-    
     "user_avatar": None, 
     "topmenu_links": [
         {"name": "Home",  "url": "admin:index", "permissions": ["auth.view_user"]},
@@ -198,12 +186,10 @@ JAZZMIN_SETTINGS = {
         {"name": "Stratix Support", "url": "/support/", "icon": "fas fa-headset"},
         {"model": "auth.user"}
     ],
-    
     "show_sidebar": True,
     "navigation_expanded": True,
     "hide_apps": [],
     "hide_models": [],
-    
     "custom_links": {
         "reports": [{
             "name": "Live Contractor Map", 
@@ -211,21 +197,11 @@ JAZZMIN_SETTINGS = {
             "icon": "fas fa-map-marked-alt text-info",
         }]
     },
-
     "order_with_respect_to": [
-        "reports", 
-        "reports.Project", 
-        "reports.Site", 
-        "reports.Report", 
-        "reports.SitePhoto", 
-        "reports.SiteIssue",
-        "reports.SupportTicket",
-        "reports.ActivityAlert", 
-        "reports.Client", 
-        "reports.UserProfile",
-        "auth"
+        "reports", "reports.Project", "reports.Site", "reports.Report", 
+        "reports.SitePhoto", "reports.SiteIssue", "reports.SupportTicket",
+        "reports.ActivityAlert", "reports.Client", "reports.UserProfile", "auth"
     ],
-    
     "icons": {
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user-shield", 
@@ -240,42 +216,20 @@ JAZZMIN_SETTINGS = {
         "reports.SiteIssue": "fas fa-exclamation-triangle text-danger",
         "reports.SupportTicket": "fas fa-ticket-alt text-success",
     },
-    
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",
     "related_modal_active": True,
-    
     "custom_css": "css/stratix_admin.css", 
     "custom_js": None,
     "show_ui_builder": False,
 }
 
 JAZZMIN_UI_TWEAKS = {
-    "navbar_small_text": False,
-    "footer_small_text": False,
-    "body_small_text": False,
-    "brand_small_text": False,
-    
-    "brand_colour": "navbar-warning",     
-    "accent": "accent-warning",            
-    "navbar": "navbar-dark",
-    "sidebar": "sidebar-dark-warning",   
-    
-    "no_navbar_border": True,
-    "navbar_fixed": True,
-    "layout_boxed": False,
-    "footer_fixed": False,
-    "sidebar_fixed": True,
-    "sidebar_nav_small_text": False,
-    "sidebar_disable_expand": False,
-    "sidebar_nav_child_indent": True,
-    "sidebar_nav_compact_style": False,
-    "sidebar_nav_legacy_style": False,
-    "sidebar_nav_flat_style": True,
-    
     "theme": "cyborg", 
     "dark_mode_theme": "cyborg",
-    
+    "navbar": "navbar-dark",
+    "sidebar": "sidebar-dark-warning",
+    "brand_colour": "navbar-warning",
     "button_classes": {
         "primary": "btn-warning fw-bold text-dark", 
         "secondary": "btn-secondary",
@@ -288,17 +242,8 @@ JAZZMIN_UI_TWEAKS = {
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    X_FRAME_OPTIONS = 'DENY'
 
-# ----------------------------------------------------------------------
-# 🚀 V2.0 AI ENGINE CONFIGURATION (GEMINI)
-# ----------------------------------------------------------------------
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')

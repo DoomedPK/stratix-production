@@ -219,7 +219,7 @@ ACCOUNT DETAILS
 =========================================
 Role: {instance.get_role_display()}
 Username: {instance.user.username}
-Login Portal: https://stratix-dashboard.onrender.com/
+Login Portal: https://portal.stratixjm.com
 
 =========================================
 HOW TO SET YOUR PASSWORD
