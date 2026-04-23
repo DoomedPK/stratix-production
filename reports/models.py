@@ -83,8 +83,10 @@ class Site(models.Model):
     site_name = models.CharField(max_length=200)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='sites')
     location = models.CharField(max_length=255)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    # We increase max_digits to 12 and decimal_places to 9
+    # 9 decimal places is accurate to roughly 1 millimeter
+    latitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True)
     assigned_contractors = models.ManyToManyField(User, blank=True, related_name='assigned_sites')
     criticality_level = models.CharField(max_length=20, choices=[('Low', 'Low'), ('Medium', 'Medium'), ('High', 'High Priority Node')], default='Medium')
     priority = models.CharField(max_length=20, choices=[('Low', 'Low'), ('Medium', 'Medium'), ('High', 'High')], default='Medium')
