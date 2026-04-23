@@ -14,7 +14,7 @@ ALLOWED_HOSTS = ['*']
 
 # 🚀 UPDATED: Production URLs for CSRF Protection
 CSRF_TRUSTED_ORIGINS = [
-    'https://stratix-dashboard.onrender.com',
+    'https://stratix-dashboard.azurewebsites.net',
     'https://stratixjm-dashboard.onrender.com',
 ]
 
