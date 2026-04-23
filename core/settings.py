@@ -126,30 +126,22 @@ else:
     }
 
 # ----------------------------------------------------------------------
-# 🚀 DJANGO 5.1 STORAGE CONFIGURATION (S3 / SUPABASE)
+# 🚀 DJANGO 5.1 STORAGE CONFIGURATION (MICROSOFT AZURE)
 # ----------------------------------------------------------------------
-SUPABASE_PROJECT_REF = config('SUPABASE_PROJECT_REF', default='')
-AWS_ACCESS_KEY_ID = config('SUPABASE_S3_ACCESS_KEY', default='')
-AWS_SECRET_ACCESS_KEY = config('SUPABASE_S3_SECRET_KEY', default='')
-SUPABASE_STORAGE_BUCKET_NAME = config('SUPABASE_STORAGE_BUCKET_NAME', default='site-photos')
+AZURE_ACCOUNT_NAME = config('AZURE_ACCOUNT_NAME', default='')
+AZURE_ACCOUNT_KEY = config('AZURE_ACCOUNT_KEY', default='')
+AZURE_CONTAINER = config('AZURE_CONTAINER', default='site-photos')
 
-if SUPABASE_PROJECT_REF and AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-    AWS_S3_ENDPOINT_URL = f'https://{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/s3'
-    AWS_STORAGE_BUCKET_NAME = SUPABASE_STORAGE_BUCKET_NAME
-    AWS_S3_REGION_NAME = 'us-east-1' 
-    AWS_S3_SIGNATURE_VERSION = 's3v4'
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_DEFAULT_ACL = None 
-    AWS_S3_ADDRESSING_STYLE = 'path'
-    AWS_QUERYSTRING_AUTH = False 
-    
-    AWS_S3_CUSTOM_DOMAIN = f'{SUPABASE_PROJECT_REF}.supabase.co/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET_NAME}'
-    AWS_S3_USE_SSL = True
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-
+if AZURE_ACCOUNT_NAME and AZURE_ACCOUNT_KEY:
     STORAGES = {
         "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "BACKEND": "storages.backends.azure_storage.AzureStorage",
+            "OPTIONS": {
+                "account_name": AZURE_ACCOUNT_NAME,
+                "account_key": AZURE_ACCOUNT_KEY,
+                "azure_container": AZURE_CONTAINER,
+                "overwrite_files": False,
+            },
         },
         "staticfiles": {
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
@@ -166,7 +158,7 @@ else:
             "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
-
+    
 # ----------------------------------------------------------------------
 # EMAIL SMTP CONFIGURATION
 # ----------------------------------------------------------------------
