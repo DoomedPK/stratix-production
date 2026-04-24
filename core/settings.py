@@ -8,20 +8,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-stratix-default-key-123')
 
-ALLOWED_HOSTS = ['*']
+# --- CLOUDFLARE PROXY & SECURITY SETTINGS ---
+# Tell Django it is sitting behind a secure Cloudflare proxy
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# Explicitly trust your production domain for logins and photo uploads
 CSRF_TRUSTED_ORIGINS = [
-    'https://stratix-dashboard.azurewebsites.net',
     'https://portal.stratixjm.com',
+    'https://stratix-dashboard.azurewebsites.net',
+]
+
+# Ensure your domain and the underlying Azure URL are allowed
+ALLOWED_HOSTS = [
+    'portal.stratixjm.com', 
+    'stratix-dashboard.azurewebsites.net',
+    'localhost', 
+    '127.0.0.1'
 ]
 
 # --- DYNAMIC URL CONFIGURATION ---
 prod_url = config('PRODUCTION_URL', default='portal.stratixjm.com')
 if prod_url:
     if not prod_url.startswith('http'):
-        CSRF_TRUSTED_ORIGINS.append(f'https://{prod_url}')
+        if f'https://{prod_url}' not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(f'https://{prod_url}')
     else:
-        CSRF_TRUSTED_ORIGINS.append(prod_url)
+        if prod_url not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(prod_url)
 
 # This variable is now available for your email logic
 PRODUCTION_URL = prod_url.replace('https://', '').replace('http://', '')
@@ -249,7 +262,6 @@ JAZZMIN_UI_TWEAKS = {
 }
 
 if not DEBUG:
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
