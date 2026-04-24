@@ -112,17 +112,25 @@ LOGOUT_REDIRECT_URL = 'login'
 CORS_ALLOW_ALL_ORIGINS = True
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
+# --- SAFE REDIS CONFIGURATION ---
 REDIS_URL = config('REDIS_URL', default=None)
-if REDIS_URL:
+
+# Only attempt to use Redis if the URL is present and starts with a valid scheme
+if REDIS_URL and any(REDIS_URL.startswith(s) for s in ['redis://', 'rediss://', 'unix://']):
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {"hosts": [REDIS_URL]},
+            'CONFIG': {
+                "hosts": [REDIS_URL],
+            },
         },
     }
 else:
+    # Fallback to In-Memory if Redis is misconfigured or missing
     CHANNEL_LAYERS = {
-        'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
     }
 
 AZURE_ACCOUNT_NAME = config('AZURE_ACCOUNT_NAME', default='')
