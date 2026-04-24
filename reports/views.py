@@ -1090,11 +1090,11 @@ def delete_photo(request, photo_id):
         report = photo.site.reports.first()
         if report and report.status != 'visit_in_progress':
             messages.error(request, "Action Denied: This site is locked. You cannot delete photos during or after QA review.")
-            return redirect(f'/upload-photos/?site_id={site_id}')
+            return redirect(f"{reverse('upload_photos')}?site_id={site_id}")
             
         photo.delete()
         messages.success(request, "Photo successfully removed from the upload queue.")
-        return redirect(f'/upload-photos/?site_id={site_id}')
+        return redirect(f"{reverse('upload_photos')}?site_id={site_id}")
     return redirect('dashboard_home')
 
 @login_required
