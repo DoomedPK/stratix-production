@@ -254,14 +254,13 @@ Stratix Support Team
 @receiver(post_save, sender=ActivityAlert)
 def trigger_client_fetch(sender, instance, created, **kwargs):
     if created:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            'global_ping',
-            {'type': 'ping_client'}
-        )
-    except Exception as e:
-            # 🚀 SAFETY NET: If Redis fails or password is wrong, 
-            # we just print the error and let the contractor finish their upload!
+        try:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'global_ping',
+                {'type': 'ping_client'}
+            )
+        except Exception as e:
             print(f"Live Alert Skipped (Redis Error): {str(e)}")
 
 class SiteIssue(models.Model):
