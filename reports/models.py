@@ -259,6 +259,10 @@ def trigger_client_fetch(sender, instance, created, **kwargs):
             'global_ping',
             {'type': 'ping_client'}
         )
+    except Exception as e:
+            # 🚀 SAFETY NET: If Redis fails or password is wrong, 
+            # we just print the error and let the contractor finish their upload!
+            print(f"Live Alert Skipped (Redis Error): {str(e)}")
 
 class SiteIssue(models.Model):
     SEVERITY_CHOICES = [
