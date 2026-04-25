@@ -439,12 +439,18 @@ def upload_photos(request):
     site = get_object_or_404(Site, id=site_id)
     report = site.reports.first()
     
-    if request.method == 'POST':
+    # 🚀 RESTORED: Handle Photo Deletion safely
+    if request.method == 'POST' and 'delete_photo_id' in request.POST:
+        photo_id = request.POST.get('delete_photo_id')
+        photo = get_object_or_404(SitePhoto, id=photo_id, site=site)
+        photo.delete()
+        messages.warning(request, "Photo removed.")
+        return redirect(f"{reverse('upload_photos')}?site_id={site.id}")
+        
+    # 🚀 RESTORED: Standard, reliable Django form upload
+    if request.method == 'POST' and not 'delete_photo_id' in request.POST:
         category = request.POST.get('category')
         notes = request.POST.get('notes', '')
-        
-        # NEW: Check if this is a background mobile app request (AJAX)
-        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         
         if 'photo' in request.FILES:
             for f in request.FILES.getlist('photo'):
@@ -458,7 +464,6 @@ def upload_photos(request):
                     status='PENDING'
                 )
                 
-        # The Drone video logic remains perfectly intact
         if 'drone_video' in request.FILES:
             for f in request.FILES.getlist('drone_video'):
                 SitePhoto.objects.create(
@@ -472,19 +477,23 @@ def upload_photos(request):
                 )
                 
         ActivityAlert.objects.create(message=f"New photos uploaded for {site.name}", user=request.user, site=site, alert_type='UPLOAD')
-        
-        # NEW: If mobile checklist, send back a fast JSON response instead of reloading the page
-        if is_ajax:
-            current_count = SitePhoto.objects.filter(site=site, category=category).exclude(status='REJECTED').count()
-            return JsonResponse({'status': 'success', 'category': category, 'current_count': current_count})
-
-        messages.success(request, "Successfully uploaded files.")
+        messages.success(request, f"Successfully uploaded to {category}.")
         return redirect(f"{reverse('upload_photos')}?site_id={site.id}")
 
-    # GET logic: Calculate exact progress for the UI checklist
     photos = SitePhoto.objects.filter(site=site).order_by('-uploaded_at')
-    progress = {}
     
+    # 🚀 NEW: Group photos perfectly for the Director's UI
+    grouped_photos = {}
+    for cat, name in SitePhoto.CATEGORY_CHOICES:
+        cat_photos = photos.filter(category=cat)
+        if cat_photos.exists():
+            grouped_photos[cat] = {
+                'name': name,
+                'photos': cat_photos
+            }
+    
+    # Progress Calculation for the top checklist
+    progress = {}
     if site.project.require_photo_minimums:
         minimums = site.project.get_photo_minimums()
         for cat, name in SitePhoto.CATEGORY_CHOICES:
@@ -496,17 +505,13 @@ def upload_photos(request):
                 'current': current,
                 'met': current >= min_req if min_req > 0 else True
             }
-    else:
-        # Fallback if minimums are turned off
-        for cat, name in SitePhoto.CATEGORY_CHOICES:
-            current = photos.filter(category=cat).exclude(status='REJECTED').count()
-            progress[cat] = {'name': name, 'min': 0, 'current': current, 'met': True}
 
     return render(request, 'reports/upload_photo.html', {
         'site': site,
         'report': report,
         'photos': photos,
-        'progress': progress
+        'progress': progress,
+        'grouped_photos': grouped_photos,
     })
 
 # -------------------------------------------------------------------------

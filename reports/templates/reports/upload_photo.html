@@ -3,80 +3,147 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    <div class="row mb-3">
+        <div class="col-12 text-center">
+            <h2 class="text-warning fw-bold"><i class="fas fa-clipboard-check me-2"></i>Site Visit Checklist</h2>
+            <p class="text-light lead">{{ site.name }}</p>
+        </div>
+    </div>
+
     <div class="row mb-4">
         <div class="col-12">
-            <h2 class="text-warning fw-bold"><i class="fas fa-clipboard-check me-2"></i>Site Checklist</h2>
-            <p class="text-light">{{ site.name }} - {{ site.project.name }}</p>
+            <div class="card bg-dark border-secondary">
+                <div class="card-header bg-secondary text-light fw-bold">
+                    <i class="fas fa-tasks me-2"></i> Required Photo Progress
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        {% for cat, data in progress.items %}
+                            {% if data.min > 0 or data.current > 0 %}
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="p-2 border rounded border-{% if data.met %}success{% else %}warning{% endif %} bg-black text-center">
+                                    <small class="d-block text-light fw-bold mb-1">{{ data.name }}</small>
+                                    <span class="badge bg-{% if data.met %}success{% else %}warning text-dark{% endif %} fs-6">
+                                        {{ data.current }} / {{ data.min }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="row">
-        {% for cat, data in progress.items %}
-        <div class="col-12 col-md-6 mb-3">
-            <div class="card bg-dark border-{% if data.met %}success{% else %}secondary{% endif %} h-100" id="card-{{ cat }}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="card-title text-light mb-0">{{ data.name }}</h5>
-                        <span class="badge bg-{% if data.met %}success{% else %}warning text-dark{% endif %}" id="badge-{{ cat }}">
-                            <span id="count-{{ cat }}">{{ data.current }}</span> / {{ data.min }} Required
-                        </span>
-                    </div>
-                    
-                    <div class="input-group mb-3">
-                        <span class="input-group-text bg-secondary border-0"><i class="fas fa-pen"></i></span>
-                        <input type="text" class="form-control bg-dark text-light border-secondary" id="notes-{{ cat }}" placeholder="Optional notes for this category...">
-                    </div>
-
-                    <input type="file" id="file-{{ cat }}" accept="image/*" capture="environment" multiple class="d-none" onchange="uploadCategory('{{ cat }}', '{{ site.id }}')">
-                    
-                    <button class="btn btn-outline-warning w-100" onclick="document.getElementById('file-{{ cat }}').click()">
-                        <i class="fas fa-camera me-2"></i> Take Photo
-                    </button>
-                    
-                    <div class="text-center mt-2 d-none" id="spinner-{{ cat }}">
-                        <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
-                        <small class="text-light ms-2">Uploading to Cloud...</small>
-                    </div>
+        <div class="col-12 col-lg-5 mb-4">
+            <div class="card bg-dark border-info h-100">
+                <div class="card-header bg-info text-dark fw-bold">
+                    <i class="fas fa-camera me-2"></i> Upload New Media
                 </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <div class="row mt-4">
-        <div class="col-12 mb-3">
-            <div class="card bg-dark border-info">
                 <div class="card-body">
-                    <h5 class="card-title text-info mb-3"><i class="fas fa-helicopter me-2"></i>Drone Operations (Optional)</h5>
                     <form method="POST" enctype="multipart/form-data" action="{% url 'upload_photos' %}?site_id={{ site.id }}">
                         {% csrf_token %}
-                        <input type="hidden" name="category" value="TOWER_STRUCTURE">
+                        
                         <div class="mb-3">
-                            <label class="form-label text-light">Upload Drone Video</label>
-                            <input class="form-control bg-dark text-light border-secondary" type="file" name="drone_video" accept="video/*">
+                            <label class="form-label text-light fw-bold">Select Category</label>
+                            <select name="category" class="form-select bg-black text-light border-secondary" required>
+                                <option value="" disabled selected>-- Choose Category --</option>
+                                {% for cat, name in progress.items %}
+                                    <option value="{{ cat }}">{{ name.name }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <button type="submit" class="btn btn-outline-info w-100"><i class="fas fa-cloud-upload-alt me-2"></i>Upload Video File</button>
+
+                        <div class="mb-3">
+                            <label class="form-label text-light fw-bold">Contractor Notes</label>
+                            <textarea name="notes" class="form-control bg-black text-light border-secondary" rows="3" placeholder="Enter condition notes, damages, or observations..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-light fw-bold">Site Photos</label>
+                            <input type="file" name="photo" class="form-control bg-black text-light border-secondary" accept="image/*" multiple>
+                        </div>
+
+                        <hr class="border-secondary">
+
+                        <div class="mb-4">
+                            <label class="form-label text-info fw-bold"><i class="fas fa-helicopter me-2"></i>Drone Video (Optional)</label>
+                            <input type="file" name="drone_video" class="form-control bg-black text-light border-info" accept="video/*">
+                        </div>
+
+                        <button type="submit" class="btn btn-info w-100 fw-bold fs-5">
+                            <i class="fas fa-cloud-upload-alt me-2"></i> Upload to Category
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
+
+        <div class="col-12 col-lg-7 mb-4">
+            <div class="card bg-dark border-secondary h-100">
+                <div class="card-header bg-secondary text-light fw-bold">
+                    <i class="fas fa-images me-2"></i> Current Uploads
+                </div>
+                <div class="card-body" style="max-height: 800px; overflow-y: auto;">
+                    {% if not grouped_photos %}
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-camera-retro fa-3x mb-3"></i>
+                            <h5>No photos uploaded yet.</h5>
+                        </div>
+                    {% else %}
+                        {% for cat, data in grouped_photos.items %}
+                            <h5 class="text-warning border-bottom border-secondary pb-2 mt-3">{{ data.name }}</h5>
+                            <div class="row g-3 mb-4">
+                                {% for photo in data.photos %}
+                                <div class="col-6 col-md-4">
+                                    <div class="card bg-black border-secondary h-100">
+                                        {% if photo.image %}
+                                            <img src="{{ photo.image.url }}" class="card-img-top" style="height: 120px; object-fit: cover;" alt="Site Photo">
+                                        {% elif photo.drone_video %}
+                                            <div class="bg-secondary text-center py-4"><i class="fas fa-video fa-2x text-light"></i></div>
+                                        {% endif %}
+                                        
+                                        <div class="card-body p-2 text-center">
+                                            {% if photo.contractor_notes %}
+                                                <p class="text-light small mb-2 text-truncate" title="{{ photo.contractor_notes }}">{{ photo.contractor_notes }}</p>
+                                            {% endif %}
+                                            
+                                            <form method="POST" action="{% url 'upload_photos' %}?site_id={{ site.id }}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="delete_photo_id" value="{{ photo.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Remove this photo?')">
+                                                    <i class="fas fa-trash"></i> Remove
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="row mt-4 mb-5">
+    <div class="row mb-5">
         <div class="col-12">
-            <div class="card bg-dark border-warning">
-                <div class="card-body">
-                    <h5 class="card-title text-warning mb-3">Complete Site Visit</h5>
+            <div class="card bg-dark border-warning shadow-lg">
+                <div class="card-body p-4 text-center">
+                    <h4 class="text-warning mb-3">Site Visit Complete?</h4>
                     <form method="POST" action="{% url 'finish_upload' site.id %}">
                         {% csrf_token %}
-                        
-                        <div class="mb-4">
-                            <label class="form-label text-light">Drone 3D Model Link (Optional)</label>
-                            <input type="url" name="drone_3d_link" class="form-control bg-dark text-light border-secondary" placeholder="https://..." value="{{ report.drone_3d_model_link|default:'' }}">
+                        <div class="row justify-content-center mb-4">
+                            <div class="col-md-8 col-lg-6">
+                                <label class="form-label text-light text-start w-100">Drone 3D Model Link (Optional)</label>
+                                <input type="url" name="drone_3d_link" class="form-control bg-black text-light border-secondary" placeholder="https://..." value="{{ report.drone_3d_model_link|default:'' }}">
+                            </div>
                         </div>
-                        
-                        <button type="submit" class="btn btn-warning w-100 fw-bold text-dark btn-lg">
-                            <i class="fas fa-check-circle me-2"></i> Finish Upload & Run AI
+                        <button type="submit" class="btn btn-warning fw-bold text-dark btn-lg px-5">
+                            <i class="fas fa-paper-plane me-2"></i> Submit for QA & Run AI
                         </button>
                     </form>
                 </div>
@@ -84,59 +151,4 @@
         </div>
     </div>
 </div>
-
-<script>
-function uploadCategory(category, siteId) {
-    const fileInput = document.getElementById(`file-${category}`);
-    const notesInput = document.getElementById(`notes-${category}`);
-    const spinner = document.getElementById(`spinner-${category}`);
-    const files = fileInput.files;
-
-    if (files.length === 0) return;
-
-    // Show the loading spinner
-    spinner.classList.remove('d-none');
-    
-    let formData = new FormData();
-    formData.append('category', category);
-    formData.append('notes', notesInput.value);
-    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-    
-    for (let i = 0; i < files.length; i++) {
-        formData.append('photo', files[i]);
-    }
-
-    // Send the photos silently in the background
-    fetch(`?site_id=${siteId}`, {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        spinner.classList.add('d-none');
-        if (data.status === 'success') {
-            // Update the uploaded count instantly!
-            const countSpan = document.getElementById(`count-${category}`);
-            countSpan.textContent = data.current_count;
-            notesInput.value = ''; // clear notes for the next photo
-            
-            // Turn the card Green if they hit the minimum requirement
-            const textContent = document.getElementById(`badge-${category}`).textContent;
-            const minReq = parseInt(textContent.split('/')[1].trim());
-            
-            if (data.current_count >= minReq) {
-                document.getElementById(`badge-${category}`).className = 'badge bg-success';
-                document.getElementById(`card-${category}`).className = 'card bg-dark border-success h-100';
-            }
-        }
-    })
-    .catch(error => {
-        spinner.classList.add('d-none');
-        alert("Error uploading photo. Please check your internet connection.");
-    });
-}
-</script>
 {% endblock %}
