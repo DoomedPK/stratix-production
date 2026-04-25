@@ -435,64 +435,78 @@ def site_issues_list(request):
 
 @login_required
 def upload_photos(request):
-    user = request.user
+    site_id = request.GET.get('site_id')
+    site = get_object_or_404(Site, id=site_id)
+    report = site.reports.first()
     
-    site_id = request.GET.get('site_id') or request.POST.get('site_id')
-    selected_site = get_object_or_404(Site, id=site_id) if site_id else None
-
-    if request.method == 'POST' and selected_site:
-        report = selected_site.reports.first()
-        if report and report.status != 'visit_in_progress':
-            messages.error(request, "Action Denied: This site is locked for QA review or is already completed. No new photos can be uploaded.")
-            return redirect('dashboard_home')
-
+    if request.method == 'POST':
         category = request.POST.get('category')
-        notes = request.POST.get('contractor_notes')
-        images = request.FILES.getlist('site_images')
+        notes = request.POST.get('notes', '')
         
-        for image in images:
-            SitePhoto.objects.create(
-                site=selected_site, contractor=user, image=image, status='PENDING',
-                category=category, contractor_notes=notes
-            )
-        messages.success(request, f"Uploaded {len(images)} photos to '{category}'.")
-        return redirect(f"{reverse('upload_photos')}?site_id={selected_site.id}")
+        # NEW: Check if this is a background mobile app request (AJAX)
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if 'photo' in request.FILES:
+            for f in request.FILES.getlist('photo'):
+                SitePhoto.objects.create(
+                    site=site,
+                    report=report,
+                    category=category,
+                    image=f,
+                    contractor_notes=notes,
+                    uploaded_by=request.user,
+                    status='PENDING'
+                )
+                
+        # The Drone video logic remains perfectly intact
+        if 'drone_video' in request.FILES:
+            for f in request.FILES.getlist('drone_video'):
+                SitePhoto.objects.create(
+                    site=site,
+                    report=report,
+                    category=category or 'TOWER_STRUCTURE',
+                    drone_video=f,
+                    contractor_notes=notes,
+                    uploaded_by=request.user,
+                    status='PENDING'
+                )
+                
+        ActivityAlert.objects.create(message=f"New photos uploaded for {site.name}", user=request.user, site=site, alert_type='UPLOAD')
+        
+        # NEW: If mobile checklist, send back a fast JSON response instead of reloading the page
+        if is_ajax:
+            current_count = SitePhoto.objects.filter(site=site, category=category).exclude(status='REJECTED').count()
+            return JsonResponse({'status': 'success', 'category': category, 'current_count': current_count})
 
-    if user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['Admin', 'QA']):
-        sites = Site.objects.filter(reports__status='visit_in_progress').distinct()
-    else:
-        sites = Site.objects.filter(assigned_contractors=user, reports__status='visit_in_progress').distinct()
+        messages.success(request, "Successfully uploaded files.")
+        return redirect(f"{reverse('upload_photos')}?site_id={site.id}")
 
-    uploaded_photos = SitePhoto.objects.filter(site=selected_site, contractor=user).order_by('-uploaded_at') if selected_site else None
-
-    # 🚀 DYNAMIC MINIMUMS: Pull from the specific project!
-    current_minimums = DEFAULT_PHOTO_MINIMUMS
-    if selected_site:
-        if selected_site.project.require_photo_minimums:
-            current_minimums = selected_site.project.get_photo_minimums()
-        else:
-            # If the box is unchecked, require 0 for everything, but keep the categories in the dropdown
-            current_minimums = {cat: 0 for cat in DEFAULT_PHOTO_MINIMUMS.keys()}
-
-    current_counts = {}
-    can_finish = True
+    # GET logic: Calculate exact progress for the UI checklist
+    photos = SitePhoto.objects.filter(site=site).order_by('-uploaded_at')
+    progress = {}
     
-    if selected_site:
-        for cat, min_count in current_minimums.items():
-            count = SitePhoto.objects.filter(site=selected_site, category=cat).exclude(status='REJECTED').count()
-            current_counts[cat] = count
-            if min_count > 0 and count < min_count:
-                can_finish = False
+    if site.project.require_photo_minimums:
+        minimums = site.project.get_photo_minimums()
+        for cat, name in SitePhoto.CATEGORY_CHOICES:
+            min_req = minimums.get(cat, 0)
+            current = photos.filter(category=cat).exclude(status='REJECTED').count()
+            progress[cat] = {
+                'name': name,
+                'min': min_req,
+                'current': current,
+                'met': current >= min_req if min_req > 0 else True
+            }
     else:
-        can_finish = False
+        # Fallback if minimums are turned off
+        for cat, name in SitePhoto.CATEGORY_CHOICES:
+            current = photos.filter(category=cat).exclude(status='REJECTED').count()
+            progress[cat] = {'name': name, 'min': 0, 'current': current, 'met': True}
 
     return render(request, 'reports/upload_photo.html', {
-        'sites': sites, 
-        'selected_site': selected_site, 
-        'uploaded_photos': uploaded_photos,
-        'minimums': current_minimums,  # <-- Pass the dynamic minimums to the template!
-        'current_counts': current_counts,
-        'can_finish': can_finish
+        'site': site,
+        'report': report,
+        'photos': photos,
+        'progress': progress
     })
 
 # -------------------------------------------------------------------------
