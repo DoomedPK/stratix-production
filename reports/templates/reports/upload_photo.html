@@ -58,6 +58,32 @@
                 {% endfor %}
             {% endif %}
 
+            {% if selected_site %}
+            <div class="card p-4 shadow-sm border-secondary-left mb-4 bg-dark border-secondary">
+                <h5 class="fw-bold border-bottom border-secondary pb-2 mb-3 text-light">
+                    <i class="fas fa-tasks me-2"></i> Required Photo Progress
+                </h5>
+                <div class="row g-2">
+                    {% for category, min_required in minimums.items %}
+                        {% if min_required > 0 %}
+                            {% for key, current in current_counts.items %}
+                                {% if key == category %}
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="p-2 border rounded border-{% if current >= min_required %}success{% else %}warning{% endif %} bg-black text-center h-100 d-flex flex-column justify-content-center">
+                                        <small class="d-block text-light fw-bold mb-1" style="font-size: 0.75rem;">{{ category }}</small>
+                                        <span class="badge bg-{% if current >= min_required %}success{% else %}warning text-dark{% endif %} fs-6">
+                                            {{ current }} / {{ min_required }}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <div class="card p-4 shadow-sm border-info-left mb-4">
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
@@ -90,8 +116,16 @@
 
                     <div class="mb-3">
                         <label for="site_images" class="form-label text-muted fw-bold">Select Photos</label>
-                        <input class="form-control bg-dark text-light border-secondary" type="file" id="site_images" name="site_images" accept="image/*" multiple required>
+                        <input class="form-control bg-dark text-light border-secondary" type="file" id="site_images" name="site_images" accept="image/*" multiple>
                         <div class="form-text text-muted">You can select multiple photos at once.</div>
+                    </div>
+                    
+                    <hr class="border-secondary my-4">
+                    
+                    <div class="mb-4">
+                        <label for="drone_video" class="form-label text-info fw-bold"><i class="fas fa-helicopter me-2"></i>Drone Video (Optional)</label>
+                        <input class="form-control bg-dark text-light border-info" type="file" id="drone_video" name="drone_video" accept="video/*">
+                        <div class="form-text text-muted">Attach an aerial fly-over video to this category.</div>
                     </div>
 
                     <div class="mb-4">
@@ -104,33 +138,7 @@
             </div>
 
             {% if selected_site %}
-            
-            <div class="card p-4 shadow-sm border-info-left mb-4 bg-dark text-light border-secondary">
-                <h5 class="fw-bold border-bottom border-secondary pb-2 mb-3 text-info">
-                    <i class="fas fa-list-check me-2"></i> Required Capture Checklist
-                </h5>
-                <p class="text-muted small mb-3">Ensure all structural minimums are met before finalizing. The system will block incomplete submissions.</p>
-                <ul class="list-group list-group-flush mb-0">
-                    {% for category, min_required in minimums.items %}
-                        {% if min_required > 0 %}
-                            {% for key, value in current_counts.items %}
-                                {% if key == category %}
-                                    <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center px-1">
-                                        {{ category }}
-                                        {% if value >= min_required %}
-                                            <span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check me-1"></i> {{ value }} / {{ min_required }}</span>
-                                        {% else %}
-                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fas fa-camera me-1"></i> {{ value }} / {{ min_required }}</span>
-                                        {% endif %}
-                                    </li>
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
-                    {% endfor %}
-                </ul>
-            </div>
-
-            <div class="card p-4 shadow-sm border-success-left mb-4">
+            <div class="card p-4 shadow-sm border-success-left mb-4 bg-dark text-light border-secondary">
                 <div class="border-bottom border-secondary pb-3 mb-4">
                     <h5 class="fw-bold mb-0 text-white"><i class="fas fa-images me-2 text-success"></i> Upload Preview</h5>
                 </div>
@@ -140,13 +148,19 @@
                     {% for photo in uploaded_photos %}
                     <div class="col-4 col-md-3">
                         <div class="position-relative">
-                            <a href="{{ photo.image.url }}" data-fancybox="gallery" data-caption="{{ photo.category }}">
-                                <img src="{{ photo.image.url }}" class="img-fluid rounded border border-secondary shadow-sm" style="height: 100px; width: 100%; object-fit: cover;" alt="Site Photo">
-                            </a>
+                            {% if photo.image %}
+                                <a href="{{ photo.image.url }}" data-fancybox="gallery" data-caption="{{ photo.category }}">
+                                    <img src="{{ photo.image.url }}" class="img-fluid rounded border border-secondary shadow-sm" style="height: 100px; width: 100%; object-fit: cover;" alt="Site Photo">
+                                </a>
+                            {% elif photo.drone_video %}
+                                <div class="bg-secondary rounded border border-secondary shadow-sm d-flex justify-content-center align-items-center" style="height: 100px; width: 100%;">
+                                    <i class="fas fa-video fa-2x text-light"></i>
+                                </div>
+                            {% endif %}
                             
-                            <form method="POST" action="{% url 'delete_photo' photo.id %}" class="position-absolute top-0 end-0 p-1" onsubmit="return confirm('Are you sure you want to delete this photo?');">
+                            <form method="POST" action="{% url 'delete_photo' photo.id %}" class="position-absolute top-0 end-0 p-1" onsubmit="return confirm('Are you sure you want to delete this file?');">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-sm rounded-circle shadow" style="width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Remove Photo">
+                                <button type="submit" class="btn btn-danger btn-sm rounded-circle shadow" style="width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Remove File">
                                     <i class="fas fa-times" style="font-size: 0.8rem;"></i>
                                 </button>
                             </form>
@@ -200,9 +214,7 @@
 {% block extra_js %}
 <script>
     function showAILoading() {
-        // Disable the button to prevent double clicks
         document.getElementById('finishBtn').disabled = true;
-        // Show the cool loading overlay
         document.getElementById('aiLoadingOverlay').style.display = 'flex';
     }
 </script>

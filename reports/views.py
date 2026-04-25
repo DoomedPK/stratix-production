@@ -448,14 +448,24 @@ def upload_photos(request):
 
         category = request.POST.get('category')
         notes = request.POST.get('contractor_notes')
-        images = request.FILES.getlist('site_images')
         
+        # Save standard images
+        images = request.FILES.getlist('site_images')
         for image in images:
             SitePhoto.objects.create(
                 site=selected_site, contractor=user, image=image, status='PENDING',
                 category=category, contractor_notes=notes
             )
-        messages.success(request, f"Uploaded {len(images)} photos to '{category}'.")
+            
+        # Save drone videos
+        drone_videos = request.FILES.getlist('drone_video')
+        for video in drone_videos:
+            SitePhoto.objects.create(
+                site=selected_site, contractor=user, drone_video=video, status='PENDING',
+                category=category, contractor_notes=notes
+            )
+            
+        messages.success(request, f"Uploaded {len(images)} photos and {len(drone_videos)} videos to '{category}'.")
         return redirect(f"{reverse('upload_photos')}?site_id={selected_site.id}")
 
     if user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['Admin', 'QA']):
@@ -490,7 +500,7 @@ def upload_photos(request):
         'sites': sites, 
         'selected_site': selected_site, 
         'uploaded_photos': uploaded_photos,
-        'minimums': current_minimums,  # <-- Pass the dynamic minimums to the template!
+        'minimums': current_minimums,  
         'current_counts': current_counts,
         'can_finish': can_finish
     })
