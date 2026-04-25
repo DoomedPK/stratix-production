@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from decouple import config
 import dj_database_url
+import socket
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -24,8 +25,17 @@ ALLOWED_HOSTS = [
     'stratix-dashboard.azurewebsites.net',
     'localhost', 
     '127.0.0.1',
-    '169.254.129.3'
 ]
+
+# --- AZURE HEALTH CHECK BYPASS ---
+# Azure's internal load balancers ping the app from random IPs in these subnets.
+# This dynamically whitelists the common Azure internal Docker IPs to prevent crash loops.
+ALLOWED_HOSTS += [f"169.254.129.{i}" for i in range(1, 15)]
+ALLOWED_HOSTS += [f"169.254.130.{i}" for i in range(1, 15)]
+try:
+    ALLOWED_HOSTS.append(socket.gethostbyname(socket.gethostname()))
+except Exception:
+    pass
 
 # --- DYNAMIC URL CONFIGURATION ---
 prod_url = config('PRODUCTION_URL', default='portal.stratixjm.com')
