@@ -457,14 +457,6 @@ def upload_photos(request):
                 category=category, contractor_notes=notes
             )
             
-        # Save drone videos
-        drone_videos = request.FILES.getlist('drone_video')
-        for video in drone_videos:
-            SitePhoto.objects.create(
-                site=selected_site, contractor=user, drone_video=video, status='PENDING',
-                category=category, contractor_notes=notes
-            )
-            
         messages.success(request, f"Uploaded {len(images)} photos and {len(drone_videos)} videos to '{category}'.")
         return redirect(f"{reverse('upload_photos')}?site_id={selected_site.id}")
 
