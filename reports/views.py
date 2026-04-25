@@ -573,11 +573,22 @@ def finish_upload(request, site_id):
                     except:
                         ai_data = {}
 
-                    report.structural_risk_score = ai_data.get('structural_risk_score')
-                    report.equipment_damage_score = ai_data.get('equipment_damage_score')
-                    report.urgency_flag = ai_data.get('urgency_flag', 'Low')
-                    report.client_executive_summary = ai_data.get('client_executive_summary', '')
-                    report.predictive_risk_outlook = ai_data.get('predictive_risk_outlook', '')
+                    # 🚀 NEW FIX: Capture ALL generated AI data fields 🚀
+                    report.structural_risk_score = ai_data.get('structural_risk_score', report.structural_risk_score)
+                    report.equipment_damage_score = ai_data.get('equipment_damage_score', report.equipment_damage_score)
+                    report.urgency_flag = ai_data.get('urgency_flag', report.urgency_flag)
+                    report.client_executive_summary = ai_data.get('client_executive_summary', report.client_executive_summary)
+                    report.predictive_risk_outlook = ai_data.get('predictive_risk_outlook', report.predictive_risk_outlook)
+                    
+                    report.ai_repair_timeline = ai_data.get('ai_repair_timeline', report.ai_repair_timeline)
+                    report.ai_resource_suggestion = ai_data.get('ai_resource_suggestion', report.ai_resource_suggestion)
+                    report.ai_tags = ai_data.get('ai_tags', report.ai_tags)
+                    report.category_damage_breakdown = ai_data.get('category_damage_breakdown', report.category_damage_breakdown)
+                    report.historical_trend_analysis = ai_data.get('historical_trend_analysis', report.historical_trend_analysis)
+                    
+                    # Save the detailed Tobby report into the QA comments section
+                    if ai_data.get('tobby_full_report'):
+                        report.comments = f"--- AI DRAFT REPORT ---\n{ai_data.get('tobby_full_report')}"
                     
                     # Logic for drawing bounding boxes and saving annotated images remains same...
                     # (Implementation usually specific to how you handle Model instances)
@@ -585,12 +596,17 @@ def finish_upload(request, site_id):
                         photo_obj.save()
 
             except Exception as e:
+                # Print to Azure logs and warn the user on the frontend
                 print(f"AI Engine Error: {str(e)}")
+                messages.warning(request, "Upload successful, but AI Analysis encountered an error. QA will review manually.")
 
             report.status = 'qa_validation' 
             report.save()
             ActivityAlert.objects.create(message=f"Contractor finished uploading. AI Analysis complete.", user=request.user, site=site, alert_type='UPLOAD')
-            messages.success(request, "Uploads completed and sent to QA for validation!")
+            
+            # Only show success message if we didn't already trigger a warning
+            if not messages.get_messages(request):
+                messages.success(request, "Uploads completed and sent to QA for validation!")
     
     return redirect('site_visit_list')
 
