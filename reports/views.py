@@ -457,7 +457,7 @@ def upload_photos(request):
                 category=category, contractor_notes=notes
             )
             
-        messages.success(request, f"Uploaded {len(images)} photos and {len(drone_videos)} videos to '{category}'.")
+        messages.success(request, f"Uploaded {len(images)} photos to '{category}'.")
         return redirect(f"{reverse('upload_photos')}?site_id={selected_site.id}")
 
     if user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['Admin', 'QA']):
@@ -467,13 +467,13 @@ def upload_photos(request):
 
     uploaded_photos = SitePhoto.objects.filter(site=selected_site, contractor=user).order_by('-uploaded_at') if selected_site else None
 
-    # 🚀 DYNAMIC MINIMUMS: Pull from the specific project!
+    # 🚀 FIX: Pulling minimums directly from the Report now!
     current_minimums = DEFAULT_PHOTO_MINIMUMS
     if selected_site:
-        if selected_site.project.require_photo_minimums:
-            current_minimums = selected_site.project.get_photo_minimums()
+        report = selected_site.reports.first()
+        if report and report.require_photo_minimums:
+            current_minimums = report.get_photo_minimums()
         else:
-            # If the box is unchecked, require 0 for everything, but keep the categories in the dropdown
             current_minimums = {cat: 0 for cat in DEFAULT_PHOTO_MINIMUMS.keys()}
 
     current_counts = {}
@@ -510,9 +510,10 @@ def finish_upload(request, site_id):
             report.drone_3d_model_link = request.POST.get('drone_3d_link')
             report.save()
         
-        if site.project.require_photo_minimums:
+        # 🚀 FIX: Pulling minimums from Report to validate finish
+        if report and report.require_photo_minimums:
             missing = []
-            current_minimums = site.project.get_photo_minimums()
+            current_minimums = report.get_photo_minimums()
             for cat, min_count in current_minimums.items():
                 if min_count > 0:
                     count = SitePhoto.objects.filter(site=site, category=cat).exclude(status='REJECTED').count()
@@ -551,7 +552,6 @@ def finish_upload(request, site_id):
 
                 for p in recent_photos:
                     if p.image:
-                        # FIX: Azure returns the full cloud URL automatically
                         img_url = p.image.url
                         response = requests.get(img_url, timeout=10)
                         if response.status_code == 200:
@@ -562,7 +562,7 @@ def finish_upload(request, site_id):
 
                 if len(pil_images) > 0:
                     ai_response = client.models.generate_content(
-                        model='gemini-2.0-flash', # Or your specific model version
+                        model='gemini-2.0-flash', 
                         contents=prompt_content
                     )
                     ai_text = ai_response.text.strip()
@@ -575,7 +575,6 @@ def finish_upload(request, site_id):
                     except:
                         ai_data = {}
 
-                    # 🚀 NEW FIX: Capture ALL generated AI data fields 🚀
                     report.structural_risk_score = ai_data.get('structural_risk_score', report.structural_risk_score)
                     report.equipment_damage_score = ai_data.get('equipment_damage_score', report.equipment_damage_score)
                     report.urgency_flag = ai_data.get('urgency_flag', report.urgency_flag)
@@ -588,17 +587,13 @@ def finish_upload(request, site_id):
                     report.category_damage_breakdown = ai_data.get('category_damage_breakdown', report.category_damage_breakdown)
                     report.historical_trend_analysis = ai_data.get('historical_trend_analysis', report.historical_trend_analysis)
                     
-                    # Save the detailed Tobby report into the QA comments section
                     if ai_data.get('tobby_full_report'):
                         report.comments = f"--- AI DRAFT REPORT ---\n{ai_data.get('tobby_full_report')}"
                     
-                    # Logic for drawing bounding boxes and saving annotated images remains same...
-                    # (Implementation usually specific to how you handle Model instances)
                     for photo_obj, _ in pil_images:
                         photo_obj.save()
 
             except Exception as e:
-                # Print to Azure logs and warn the user on the frontend
                 print(f"AI Engine Error: {str(e)}")
                 messages.warning(request, "Upload successful, but AI Analysis encountered an error. QA will review manually.")
 
@@ -606,7 +601,6 @@ def finish_upload(request, site_id):
             report.save()
             ActivityAlert.objects.create(message=f"Contractor finished uploading. AI Analysis complete.", user=request.user, site=site, alert_type='UPLOAD')
             
-            # Only show success message if we didn't already trigger a warning
             if not messages.get_messages(request):
                 messages.success(request, "Uploads completed and sent to QA for validation!")
     
@@ -832,19 +826,17 @@ def approve_report(request, report_id):
         
     report = get_object_or_404(Report, id=report_id)
     
-    # 🚀 THE FINAL FIX: The Bulletproof Delivery Gatekeeper
-    # 1. Block if there are any unreviewed photos
     pending_photos = SitePhoto.objects.filter(site=report.site, status='PENDING').count()
     if pending_photos > 0:
         messages.error(request, f"Action Denied! There are {pending_photos} unreviewed photos. QA must approve or reject them first.")
         return redirect('qa_hub')
 
-    # 2. Block if the site mathematically lacks the required APPROVED photos
-    if report.site.project.require_photo_minimums:
+    # 🚀 FIX: Pulling minimums from Report to validate final delivery
+    if report.require_photo_minimums:
         missing = []
-        for cat, min_count in PHOTO_MINIMUMS.items():
+        current_minimums = report.get_photo_minimums()
+        for cat, min_count in current_minimums.items():
             if min_count > 0:
-                # We specifically count ONLY mathematically Approved photos!
                 approved_count = SitePhoto.objects.filter(site=report.site, category=cat, status='APPROVED').count()
                 if approved_count < min_count:
                     missing.append(f"{cat} (needs {min_count - approved_count} more)")

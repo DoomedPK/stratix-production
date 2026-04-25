@@ -27,36 +27,6 @@ class Project(models.Model):
         ('Post-Disaster', 'Post-Disaster Emergency Response')
     ]
     project_type = models.CharField(max_length=50, choices=PROJECT_TYPE_CHOICES, default='General')
-    require_photo_minimums = models.BooleanField(default=False, help_text="Enforce minimum photo counts per category for contractors.")
-
-    # 🚀 NEW: Dynamic Photo Minimums (Defaults set to your standard rules)
-    min_site_overview = models.IntegerField(default=4, verbose_name="Min Site Overview")
-    min_access_road = models.IntegerField(default=2, verbose_name="Min Access Road")
-    min_tower_structure = models.IntegerField(default=5, verbose_name="Min Tower Structure")
-    min_tower_base = models.IntegerField(default=14, verbose_name="Min Tower Base & Foundation")
-    min_antennas = models.IntegerField(default=9, verbose_name="Min Antennas & Mounting")
-    min_cabling = models.IntegerField(default=3, verbose_name="Min Cabling & Connections")
-    min_equipment_shelter = models.IntegerField(default=2, verbose_name="Min Equipment Shelter")
-    min_power_systems = models.IntegerField(default=2, verbose_name="Min Power Systems")
-    min_grounding = models.IntegerField(default=2, verbose_name="Min Grounding")
-    min_perimeter = models.IntegerField(default=5, verbose_name="Min Perimeter & Security")
-    min_additional = models.IntegerField(default=0, verbose_name="Min Additional Observations")
-
-    def get_photo_minimums(self):
-        """Returns a dictionary of this specific project's minimums."""
-        return {
-            'Site Overview': self.min_site_overview,
-            'Access Road': self.min_access_road,
-            'Tower Structure': self.min_tower_structure,
-            'Tower Base & Foundation': self.min_tower_base,
-            'Antennas & Mounting Systems': self.min_antennas,
-            'Cabling & Connections': self.min_cabling,
-            'Equipment Shelter / Cabinets': self.min_equipment_shelter,
-            'Power Systems': self.min_power_systems,
-            'Grounding & Earthing': self.min_grounding,
-            'Perimeter, Security & Surroundings': self.min_perimeter,
-            'Additional Observations': self.min_additional,
-        }
 
     def __str__(self):
         return f"{self.name} ({self.project_type})"
@@ -83,8 +53,6 @@ class Site(models.Model):
     site_name = models.CharField(max_length=200)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='sites')
     location = models.CharField(max_length=255)
-    # We increase max_digits to 12 and decimal_places to 9
-    # 9 decimal places is accurate to roughly 1 millimeter
     latitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True)
     longitude = models.DecimalField(max_digits=12, decimal_places=9, null=True, blank=True)
     assigned_contractors = models.ManyToManyField(User, blank=True, related_name='assigned_sites')
@@ -92,7 +60,6 @@ class Site(models.Model):
     priority = models.CharField(max_length=20, choices=[('Low', 'Low'), ('Medium', 'Medium'), ('High', 'High')], default='Medium')
     height_in_meters = models.FloatField(null=True, blank=True, help_text="Site height in meters")
 
-    # 🚀 NEW: Client-Provided Design Data
     tower_type = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., Monopole, Lattice, Guyed Mast, Rooftop")
     expected_antenna_count = models.IntegerField(blank=True, null=True, help_text="Total number of antennas the client expects on site")
     expected_azimuth = models.CharField(max_length=100, blank=True, null=True, help_text="e.g., Sector A: 120°, Sector B: 240°")
@@ -130,6 +97,36 @@ class Report(models.Model):
     
     predictive_risk_outlook = models.TextField(blank=True, null=True, help_text="AI simulation of future structural degradation based on environment.")
     drone_3d_model_link = models.URLField(max_length=500, blank=True, null=True, help_text="Public share link from DroneDeploy or Pix4D.")
+
+    # 🚀 MOVED: Dynamic Photo Minimums are now per-Report (Per-Site Visit)
+    require_photo_minimums = models.BooleanField(default=False, help_text="Enforce minimum photo counts per category for contractors on this site visit.")
+    min_site_overview = models.IntegerField(default=4, verbose_name="Min Site Overview")
+    min_access_road = models.IntegerField(default=2, verbose_name="Min Access Road")
+    min_tower_structure = models.IntegerField(default=5, verbose_name="Min Tower Structure")
+    min_tower_base = models.IntegerField(default=14, verbose_name="Min Tower Base & Foundation")
+    min_antennas = models.IntegerField(default=9, verbose_name="Min Antennas & Mounting")
+    min_cabling = models.IntegerField(default=3, verbose_name="Min Cabling & Connections")
+    min_equipment_shelter = models.IntegerField(default=2, verbose_name="Min Equipment Shelter")
+    min_power_systems = models.IntegerField(default=2, verbose_name="Min Power Systems")
+    min_grounding = models.IntegerField(default=2, verbose_name="Min Grounding")
+    min_perimeter = models.IntegerField(default=5, verbose_name="Min Perimeter & Security")
+    min_additional = models.IntegerField(default=0, verbose_name="Min Additional Observations")
+
+    def get_photo_minimums(self):
+        """Returns a dictionary of this specific report's minimums."""
+        return {
+            'Site Overview': self.min_site_overview,
+            'Access Road': self.min_access_road,
+            'Tower Structure': self.min_tower_structure,
+            'Tower Base & Foundation': self.min_tower_base,
+            'Antennas & Mounting Systems': self.min_antennas,
+            'Cabling & Connections': self.min_cabling,
+            'Equipment Shelter / Cabinets': self.min_equipment_shelter,
+            'Power Systems': self.min_power_systems,
+            'Grounding & Earthing': self.min_grounding,
+            'Perimeter, Security & Surroundings': self.min_perimeter,
+            'Additional Observations': self.min_additional,
+        }
 
     def __str__(self):
         return f"Report for {self.site.site_id}"

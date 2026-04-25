@@ -8,29 +8,19 @@ class ClientAdmin(admin.ModelAdmin):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'client', 'project_type', 'status', 'require_photo_minimums', 'start_date')
-    list_editable = ('project_type', 'status', 'require_photo_minimums')
+    list_display = ('name', 'client', 'project_type', 'status', 'start_date')
+    list_editable = ('project_type', 'status')
     list_filter = ('project_type', 'status', 'client')
     search_fields = ('name',)
 
     fieldsets = (
         ('Project Info', {
-            'fields': ('name', 'client', 'start_date', 'end_date', 'status', 'project_type', 'require_photo_minimums')
-        }),
-        ('Custom Photo Minimum Requirements', {
-            'fields': (
-                'min_site_overview', 'min_access_road', 'min_tower_structure', 
-                'min_tower_base', 'min_antennas', 'min_cabling', 
-                'min_equipment_shelter', 'min_power_systems', 'min_grounding', 
-                'min_perimeter', 'min_additional'
-            ),
-            'description': "Adjust the required photo count for this specific project. (Only applies if 'Require photo minimums' is checked)."
+            'fields': ('name', 'client', 'start_date', 'end_date', 'status', 'project_type')
         }),
     )
 
 @admin.register(Site)
 class SiteAdmin(admin.ModelAdmin):
-    # 🚀 NEW: Added tower_type to the list display so Admins can see the design data at a glance
     list_display = ('site_id', 'site_name', 'project', 'tower_type', 'criticality_level', 'priority')
     list_editable = ('criticality_level', 'priority')
     list_filter = ('criticality_level', 'priority', 'project', 'tower_type')
@@ -39,11 +29,34 @@ class SiteAdmin(admin.ModelAdmin):
 
 @admin.register(Report)
 class ReportAdmin(admin.ModelAdmin):
-    list_display = ('site', 'status', 'structural_risk_score', 'equipment_damage_score', 'urgency_flag')
-    list_editable = ('urgency_flag',)
-    list_filter = ('status', 'urgency_flag')
+    list_display = ('site', 'status', 'require_photo_minimums', 'structural_risk_score', 'equipment_damage_score', 'urgency_flag')
+    list_editable = ('urgency_flag', 'require_photo_minimums')
+    list_filter = ('status', 'urgency_flag', 'require_photo_minimums')
     search_fields = ('site__site_id',)
     readonly_fields = ('structural_risk_score', 'equipment_damage_score', 'ai_repair_timeline', 'ai_resource_suggestion')
+
+    fieldsets = (
+        ('Report Status', {
+            'fields': ('site', 'status', 'comments', 'final_document')
+        }),
+        ('Custom Photo Minimum Requirements', {
+            'fields': (
+                'require_photo_minimums',
+                'min_site_overview', 'min_access_road', 'min_tower_structure', 
+                'min_tower_base', 'min_antennas', 'min_cabling', 
+                'min_equipment_shelter', 'min_power_systems', 'min_grounding', 
+                'min_perimeter', 'min_additional'
+            ),
+            'description': "Adjust the required photo count for THIS specific site visit."
+        }),
+        ('AI Analysis Data', {
+            'fields': (
+                'structural_risk_score', 'equipment_damage_score', 'urgency_flag', 
+                'ai_repair_timeline', 'ai_resource_suggestion', 'client_executive_summary', 
+                'historical_trend_analysis', 'category_damage_breakdown', 'predictive_risk_outlook', 'drone_3d_model_link'
+            )
+        }),
+    )
 
 @admin.register(SitePhoto)
 class SitePhotoAdmin(admin.ModelAdmin):
