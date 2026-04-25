@@ -596,9 +596,10 @@ def finish_upload(request, site_id):
                         photo_obj.save()
 
             except Exception as e:
-                # Print to Azure logs and warn the user on the frontend
-                print(f"AI Engine Error: {str(e)}")
-                messages.warning(request, "Upload successful, but AI Analysis encountered an error. QA will review manually.")
+                # Force the flush to Azure logs AND print the exact error to the browser!
+                error_msg = str(e)
+                print(f"AI Engine Error: {error_msg}", flush=True)
+                messages.warning(request, f"AI SYSTEM CRASH: {error_msg}")
 
             report.status = 'qa_validation' 
             report.save()
