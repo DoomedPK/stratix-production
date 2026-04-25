@@ -529,36 +529,53 @@ def finish_upload(request, site_id):
                 client = genai.Client(api_key=settings.GEMINI_API_KEY)
                 recent_photos = list(SitePhoto.objects.filter(site=site).order_by('category', '-uploaded_at')[:100])
                 
+                # 🚀 The Admin Panel Prompt is pulled right here
                 active_prompt = AIPromptSettings.objects.filter(is_active=True).first()
                 base_instruction = active_prompt.prompt_text if active_prompt and active_prompt.prompt_text else "Analyze these photos."
                 
                 past_issues = site.issues.filter(is_resolved=False)
                 issues_text = "; ".join([f"{i.severity}: {i.description}" for i in past_issues]) if past_issues else "No prior unresolved issues."
-                notes_list = [f"- {p.category}: {p.contractor_notes}" for p in recent_photos if p.contractor_notes]
-                notes_text = "\n".join(notes_list) if notes_list else "No contractor field notes provided."
 
+                # 🚀 UPGRADE: Bulk notes removed, we use Interleaved Prompting below instead
                 dynamic_context = f"""
                 --- LIVE DATABASE INPUT DATA ---
                 Location: {site.location}
                 Tower Type: {site.tower_type or 'Unknown'}
                 Expected Antenna Count: {site.expected_antenna_count or 'Unknown'}
                 Previous Inspection/Issues Data: {issues_text}
-                CONTRACTOR FIELD NOTES: {notes_text}
                 --------------------------------
+                Please analyze the following images section by section based on their provided category headers.
                 """
 
+                # 1. Start the prompt with your Admin Panel instructions and the basic site data
                 prompt_content = [base_instruction, dynamic_context]
                 pil_images = []
 
+                # 2. Group the photos by category
+                grouped_photos = {}
                 for p in recent_photos:
-                    if p.image:
-                        img_url = p.image.url
-                        response = requests.get(img_url, timeout=10)
-                        if response.status_code == 200:
-                            img = Image.open(BytesIO(response.content)).convert("RGB")
-                            img.thumbnail((800, 800)) 
-                            prompt_content.append(img)
-                            pil_images.append((p, img))
+                    if p.category not in grouped_photos:
+                        grouped_photos[p.category] = []
+                    grouped_photos[p.category].append(p)
+
+                # 3. Interleave the text and photos logically
+                for category, photos in grouped_photos.items():
+                    # Tell Gemini which section of the tower it is looking at next
+                    prompt_content.append(f"\n--- CATEGORY: {category.upper()} ---")
+                    
+                    for p in photos:
+                        if p.image:
+                            img_url = p.image.url
+                            response = requests.get(img_url, timeout=10)
+                            if response.status_code == 200:
+                                img = Image.open(BytesIO(response.content)).convert("RGB")
+                                img.thumbnail((800, 800)) 
+                                prompt_content.append(img)
+                                pil_images.append((p, img))
+                                
+                                # Attach the contractor's specific note immediately after the photo
+                                if p.contractor_notes:
+                                    prompt_content.append(f"[Contractor Note for the above photo]: {p.contractor_notes}")
 
                 if len(pil_images) > 0:
                     ai_response = client.models.generate_content(
