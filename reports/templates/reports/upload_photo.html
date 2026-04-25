@@ -1,154 +1,209 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_css %}
+<style>
+    /* 🚀 Stratix AI Loading Screen Styles */
+    #aiLoadingOverlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.95);
+        z-index: 99999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    .scanner-box {
+        width: 150px; height: 150px;
+        border: 2px solid #38bdf8;
+        border-radius: 15px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 20px;
+        box-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+    }
+    .scanner-line {
+        width: 100%; height: 4px;
+        background: #f59e0b;
+        position: absolute;
+        box-shadow: 0 0 15px #f59e0b;
+        animation: scan 2s infinite linear;
+    }
+    @keyframes scan {
+        0% { top: 0; }
+        50% { top: 100%; }
+        100% { top: 0; }
+    }
+    .pulse-text {
+        animation: pulse 1.5s infinite;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row mb-3">
-        <div class="col-12 text-center">
-            <h2 class="text-warning fw-bold"><i class="fas fa-clipboard-check me-2"></i>Site Visit Checklist</h2>
-            <p class="text-light lead">{{ site.name }}</p>
-        </div>
-    </div>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h2 class="fw-bold mb-4 text-white"><i class="fas fa-cloud-upload-alt me-2 text-info"></i> Contractor Photo Upload</h2>
+            
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+                    <i class="fas {% if message.tags == 'error' %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
 
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-dark border-secondary">
-                <div class="card-header bg-secondary text-light fw-bold">
-                    <i class="fas fa-tasks me-2"></i> Required Photo Progress
-                </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        {% for cat, data in progress.items %}
-                            {% if data.min > 0 or data.current > 0 %}
-                            <div class="col-6 col-md-4 col-lg-3">
-                                <div class="p-2 border rounded border-{% if data.met %}success{% else %}warning{% endif %} bg-black text-center">
-                                    <small class="d-block text-light fw-bold mb-1">{{ data.name }}</small>
-                                    <span class="badge bg-{% if data.met %}success{% else %}warning text-dark{% endif %} fs-6">
-                                        {{ data.current }} / {{ data.min }}
-                                    </span>
-                                </div>
-                            </div>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-12 col-lg-5 mb-4">
-            <div class="card bg-dark border-info h-100">
-                <div class="card-header bg-info text-dark fw-bold">
-                    <i class="fas fa-camera me-2"></i> Upload New Media
-                </div>
-                <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data" action="{% url 'upload_photos' %}?site_id={{ site.id }}">
-                        {% csrf_token %}
-                        
+            <div class="card p-4 shadow-sm border-info-left mb-4">
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {% if selected_site %}
+                        <input type="hidden" name="site_id" value="{{ selected_site.id }}">
+                        <div class="alert bg-dark border-secondary text-light mb-4">
+                            Uploading to Site: <strong class="text-info fs-5">{{ selected_site.site_id }} - {{ selected_site.site_name }}</strong>
+                        </div>
+                    {% else %}
                         <div class="mb-3">
-                            <label class="form-label text-light fw-bold">Select Category</label>
-                            <select name="category" class="form-select bg-black text-light border-secondary" required>
-                                <option value="" disabled selected>-- Choose Category --</option>
-                                {% for cat, name in progress.items %}
-                                    <option value="{{ cat }}">{{ name.name }}</option>
+                            <label for="site_id" class="form-label text-muted fw-bold">Select Checked-In Site</label>
+                            <select name="site_id" id="site_id" class="form-select bg-dark text-light border-secondary" required>
+                                <option value="">-- Choose Site --</option>
+                                {% for site in sites %}
+                                    <option value="{{ site.id }}">{{ site.site_id }} - {{ site.site_name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label text-light fw-bold">Contractor Notes</label>
-                            <textarea name="notes" class="form-control bg-black text-light border-secondary" rows="3" placeholder="Enter condition notes, damages, or observations..."></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label text-light fw-bold">Site Photos</label>
-                            <input type="file" name="photo" class="form-control bg-black text-light border-secondary" accept="image/*" multiple>
-                        </div>
-
-                        <hr class="border-secondary">
-
-                        <div class="mb-4">
-                            <label class="form-label text-info fw-bold"><i class="fas fa-helicopter me-2"></i>Drone Video (Optional)</label>
-                            <input type="file" name="drone_video" class="form-control bg-black text-light border-info" accept="video/*">
-                        </div>
-
-                        <button type="submit" class="btn btn-info w-100 fw-bold fs-5">
-                            <i class="fas fa-cloud-upload-alt me-2"></i> Upload to Category
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-lg-7 mb-4">
-            <div class="card bg-dark border-secondary h-100">
-                <div class="card-header bg-secondary text-light fw-bold">
-                    <i class="fas fa-images me-2"></i> Current Uploads
-                </div>
-                <div class="card-body" style="max-height: 800px; overflow-y: auto;">
-                    {% if not grouped_photos %}
-                        <div class="text-center text-muted py-5">
-                            <i class="fas fa-camera-retro fa-3x mb-3"></i>
-                            <h5>No photos uploaded yet.</h5>
-                        </div>
-                    {% else %}
-                        {% for cat, data in grouped_photos.items %}
-                            <h5 class="text-warning border-bottom border-secondary pb-2 mt-3">{{ data.name }}</h5>
-                            <div class="row g-3 mb-4">
-                                {% for photo in data.photos %}
-                                <div class="col-6 col-md-4">
-                                    <div class="card bg-black border-secondary h-100">
-                                        {% if photo.image %}
-                                            <img src="{{ photo.image.url }}" class="card-img-top" style="height: 120px; object-fit: cover;" alt="Site Photo">
-                                        {% elif photo.drone_video %}
-                                            <div class="bg-secondary text-center py-4"><i class="fas fa-video fa-2x text-light"></i></div>
-                                        {% endif %}
-                                        
-                                        <div class="card-body p-2 text-center">
-                                            {% if photo.contractor_notes %}
-                                                <p class="text-light small mb-2 text-truncate" title="{{ photo.contractor_notes }}">{{ photo.contractor_notes }}</p>
-                                            {% endif %}
-                                            
-                                            <form method="POST" action="{% url 'upload_photos' %}?site_id={{ site.id }}">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="delete_photo_id" value="{{ photo.id }}">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Remove this photo?')">
-                                                    <i class="fas fa-trash"></i> Remove
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        {% endfor %}
                     {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+                    
+                    <div class="mb-3">
+                        <label for="category" class="form-label text-muted fw-bold">Photo Category</label>
+                        <select name="category" id="category" class="form-select bg-dark text-light border-secondary" required>
+                            {% for cat, min_count in minimums.items %}
+                                <option value="{{ cat }}">{{ cat }} {% if min_count > 0 %}(Min: {{ min_count }}){% else %}(Optional){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    <div class="row mb-5">
-        <div class="col-12">
-            <div class="card bg-dark border-warning shadow-lg">
-                <div class="card-body p-4 text-center">
-                    <h4 class="text-warning mb-3">Site Visit Complete?</h4>
-                    <form method="POST" action="{% url 'finish_upload' site.id %}">
-                        {% csrf_token %}
-                        <div class="row justify-content-center mb-4">
-                            <div class="col-md-8 col-lg-6">
-                                <label class="form-label text-light text-start w-100">Drone 3D Model Link (Optional)</label>
-                                <input type="url" name="drone_3d_link" class="form-control bg-black text-light border-secondary" placeholder="https://..." value="{{ report.drone_3d_model_link|default:'' }}">
-                            </div>
+                    <div class="mb-3">
+                        <label for="site_images" class="form-label text-muted fw-bold">Select Photos</label>
+                        <input class="form-control bg-dark text-light border-secondary" type="file" id="site_images" name="site_images" accept="image/*" multiple required>
+                        <div class="form-text text-muted">You can select multiple photos at once.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="contractor_notes" class="form-label text-muted fw-bold">Contractor Notes (Optional)</label>
+                        <textarea class="form-control bg-dark text-light border-secondary" id="contractor_notes" name="contractor_notes" rows="2" placeholder="Add any details about this specific upload batch..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-info w-100 fw-bold text-dark"><i class="fas fa-upload me-2"></i> Upload to Category</button>
+                </form>
+            </div>
+
+            {% if selected_site %}
+            
+            <div class="card p-4 shadow-sm border-info-left mb-4 bg-dark text-light border-secondary">
+                <h5 class="fw-bold border-bottom border-secondary pb-2 mb-3 text-info">
+                    <i class="fas fa-list-check me-2"></i> Required Capture Checklist
+                </h5>
+                <p class="text-muted small mb-3">Ensure all structural minimums are met before finalizing. The system will block incomplete submissions.</p>
+                <ul class="list-group list-group-flush mb-0">
+                    {% for category, min_required in minimums.items %}
+                        {% if min_required > 0 %}
+                            {% for key, value in current_counts.items %}
+                                {% if key == category %}
+                                    <li class="list-group-item bg-transparent text-light border-secondary d-flex justify-content-between align-items-center px-1">
+                                        {{ category }}
+                                        {% if value >= min_required %}
+                                            <span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check me-1"></i> {{ value }} / {{ min_required }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2"><i class="fas fa-camera me-1"></i> {{ value }} / {{ min_required }}</span>
+                                        {% endif %}
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card p-4 shadow-sm border-success-left mb-4">
+                <div class="border-bottom border-secondary pb-3 mb-4">
+                    <h5 class="fw-bold mb-0 text-white"><i class="fas fa-images me-2 text-success"></i> Upload Preview</h5>
+                </div>
+                
+                {% if uploaded_photos %}
+                <div class="row g-3 mb-4">
+                    {% for photo in uploaded_photos %}
+                    <div class="col-4 col-md-3">
+                        <div class="position-relative">
+                            <a href="{{ photo.image.url }}" data-fancybox="gallery" data-caption="{{ photo.category }}">
+                                <img src="{{ photo.image.url }}" class="img-fluid rounded border border-secondary shadow-sm" style="height: 100px; width: 100%; object-fit: cover;" alt="Site Photo">
+                            </a>
+                            
+                            <form method="POST" action="{% url 'delete_photo' photo.id %}" class="position-absolute top-0 end-0 p-1" onsubmit="return confirm('Are you sure you want to delete this photo?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm rounded-circle shadow" style="width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Remove Photo">
+                                    <i class="fas fa-times" style="font-size: 0.8rem;"></i>
+                                </button>
+                            </form>
                         </div>
-                        <button type="submit" class="btn btn-warning fw-bold text-dark btn-lg px-5">
-                            <i class="fas fa-paper-plane me-2"></i> Submit for QA & Run AI
+                        <div class="text-center mt-2 text-muted fw-bold" style="font-size: 0.65rem; text-transform: uppercase;">{{ photo.category|truncatechars:15 }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center mb-4 fst-italic">No photos uploaded for this site yet.</p>
+                {% endif %}
+
+                <div class="border-top border-secondary pt-4 mt-2">
+                    <form method="POST" action="{% url 'finish_upload' selected_site.id %}" id="finishUploadForm" class="w-100" onsubmit="showAILoading()">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="drone_3d_link" class="form-label text-info fw-bold small"><i class="fas fa-cube me-1"></i> Drone 3D Model Link (Optional)</label>
+                            <input type="url" class="form-control bg-dark text-light border-secondary" id="drone_3d_link" name="drone_3d_link" placeholder="Paste DroneDeploy, Pix4D, or Sketchfab share link here...">
+                            <div class="form-text text-muted" style="font-size: 0.75rem;">If a 3D photogrammetry scan was completed, paste the public share link to embed it for the client.</div>
+                        </div>
+                        
+                        <button type="submit" id="finishBtn" class="btn btn-success fw-bold w-100 py-3 fs-5 shadow-lg" {% if not can_finish %}disabled{% endif %}>
+                            <i class="fas fa-microchip me-2"></i> Finish Uploads & Trigger AI
                         </button>
+                        
+                        {% if not can_finish %}
+                        <div class="text-center mt-3 text-warning small fw-bold">
+                            <i class="fas fa-lock me-1"></i> You must fulfill all photo minimums in the checklist above to unlock submission.
+                        </div>
+                        {% endif %}
                     </form>
                 </div>
             </div>
+            {% endif %}
+
         </div>
     </div>
 </div>
+
+<div id="aiLoadingOverlay">
+    <div class="scanner-box">
+        <div class="scanner-line"></div>
+        <i class="fas fa-tower-cell text-info" style="font-size: 80px; margin-top: 30px; opacity: 0.5;"></i>
+    </div>
+    <h3 class="fw-bold text-info pulse-text mb-2">Stratix Vision Engine Active</h3>
+    <p class="text-light" style="max-width: 400px;">Please wait while our AI analyzes structural integrity, cross-references design blueprints, and draws bounding boxes on anomalies. <br><br><strong>Do not close this page. This may take up to 60 seconds.</strong></p>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function showAILoading() {
+        // Disable the button to prevent double clicks
+        document.getElementById('finishBtn').disabled = true;
+        // Show the cool loading overlay
+        document.getElementById('aiLoadingOverlay').style.display = 'flex';
+    }
+</script>
 {% endblock %}

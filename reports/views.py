@@ -435,83 +435,64 @@ def site_issues_list(request):
 
 @login_required
 def upload_photos(request):
-    site_id = request.GET.get('site_id')
-    site = get_object_or_404(Site, id=site_id)
-    report = site.reports.first()
+    user = request.user
     
-    # 🚀 RESTORED: Handle Photo Deletion safely
-    if request.method == 'POST' and 'delete_photo_id' in request.POST:
-        photo_id = request.POST.get('delete_photo_id')
-        photo = get_object_or_404(SitePhoto, id=photo_id, site=site)
-        photo.delete()
-        messages.warning(request, "Photo removed.")
-        return redirect(f"{reverse('upload_photos')}?site_id={site.id}")
-        
-    # 🚀 RESTORED: Standard, reliable Django form upload
-    if request.method == 'POST' and not 'delete_photo_id' in request.POST:
-        category = request.POST.get('category')
-        notes = request.POST.get('notes', '')
-        
-        if 'photo' in request.FILES:
-            for f in request.FILES.getlist('photo'):
-                SitePhoto.objects.create(
-                    site=site,
-                    report=report,
-                    category=category,
-                    image=f,
-                    contractor_notes=notes,
-                    uploaded_by=request.user,
-                    status='PENDING'
-                )
-                
-        if 'drone_video' in request.FILES:
-            for f in request.FILES.getlist('drone_video'):
-                SitePhoto.objects.create(
-                    site=site,
-                    report=report,
-                    category=category or 'TOWER_STRUCTURE',
-                    drone_video=f,
-                    contractor_notes=notes,
-                    uploaded_by=request.user,
-                    status='PENDING'
-                )
-                
-        ActivityAlert.objects.create(message=f"New photos uploaded for {site.name}", user=request.user, site=site, alert_type='UPLOAD')
-        messages.success(request, f"Successfully uploaded to {category}.")
-        return redirect(f"{reverse('upload_photos')}?site_id={site.id}")
+    site_id = request.GET.get('site_id') or request.POST.get('site_id')
+    selected_site = get_object_or_404(Site, id=site_id) if site_id else None
 
-    photos = SitePhoto.objects.filter(site=site).order_by('-uploaded_at')
+    if request.method == 'POST' and selected_site:
+        report = selected_site.reports.first()
+        if report and report.status != 'visit_in_progress':
+            messages.error(request, "Action Denied: This site is locked for QA review or is already completed. No new photos can be uploaded.")
+            return redirect('dashboard_home')
+
+        category = request.POST.get('category')
+        notes = request.POST.get('contractor_notes')
+        images = request.FILES.getlist('site_images')
+        
+        for image in images:
+            SitePhoto.objects.create(
+                site=selected_site, contractor=user, image=image, status='PENDING',
+                category=category, contractor_notes=notes
+            )
+        messages.success(request, f"Uploaded {len(images)} photos to '{category}'.")
+        return redirect(f"{reverse('upload_photos')}?site_id={selected_site.id}")
+
+    if user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['Admin', 'QA']):
+        sites = Site.objects.filter(reports__status='visit_in_progress').distinct()
+    else:
+        sites = Site.objects.filter(assigned_contractors=user, reports__status='visit_in_progress').distinct()
+
+    uploaded_photos = SitePhoto.objects.filter(site=selected_site, contractor=user).order_by('-uploaded_at') if selected_site else None
+
+    # 🚀 DYNAMIC MINIMUMS: Pull from the specific project!
+    current_minimums = DEFAULT_PHOTO_MINIMUMS
+    if selected_site:
+        if selected_site.project.require_photo_minimums:
+            current_minimums = selected_site.project.get_photo_minimums()
+        else:
+            # If the box is unchecked, require 0 for everything, but keep the categories in the dropdown
+            current_minimums = {cat: 0 for cat in DEFAULT_PHOTO_MINIMUMS.keys()}
+
+    current_counts = {}
+    can_finish = True
     
-    # 🚀 NEW: Group photos perfectly for the Director's UI
-    grouped_photos = {}
-    for cat, name in SitePhoto.CATEGORY_CHOICES:
-        cat_photos = photos.filter(category=cat)
-        if cat_photos.exists():
-            grouped_photos[cat] = {
-                'name': name,
-                'photos': cat_photos
-            }
-    
-    # Progress Calculation for the top checklist
-    progress = {}
-    if site.project.require_photo_minimums:
-        minimums = site.project.get_photo_minimums()
-        for cat, name in SitePhoto.CATEGORY_CHOICES:
-            min_req = minimums.get(cat, 0)
-            current = photos.filter(category=cat).exclude(status='REJECTED').count()
-            progress[cat] = {
-                'name': name,
-                'min': min_req,
-                'current': current,
-                'met': current >= min_req if min_req > 0 else True
-            }
+    if selected_site:
+        for cat, min_count in current_minimums.items():
+            count = SitePhoto.objects.filter(site=selected_site, category=cat).exclude(status='REJECTED').count()
+            current_counts[cat] = count
+            if min_count > 0 and count < min_count:
+                can_finish = False
+    else:
+        can_finish = False
 
     return render(request, 'reports/upload_photo.html', {
-        'site': site,
-        'report': report,
-        'photos': photos,
-        'progress': progress,
-        'grouped_photos': grouped_photos,
+        'sites': sites, 
+        'selected_site': selected_site, 
+        'uploaded_photos': uploaded_photos,
+        'minimums': current_minimums,  # <-- Pass the dynamic minimums to the template!
+        'current_counts': current_counts,
+        'can_finish': can_finish
     })
 
 # -------------------------------------------------------------------------
