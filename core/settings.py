@@ -23,7 +23,8 @@ ALLOWED_HOSTS = [
     'portal.stratixjm.com', 
     'stratix-dashboard.azurewebsites.net',
     'localhost', 
-    '127.0.0.1'
+    '127.0.0.1',
+    '169.254.129.3'
 ]
 
 # --- DYNAMIC URL CONFIGURATION ---
